@@ -8,6 +8,7 @@ This is a Memory Control Protocol (MCP) server implementation that uses Neo4j as
 - Neo4j Database (local or remote)
 - Poetry (Python package manager)
 - Docker and Docker Compose (for running Neo4j)
+- Go Task (optional, for task automation)
 
 ## Installation
 
@@ -29,7 +30,25 @@ poetry install
 
 ## Running the Server
 
-### Using Docker Compose for Neo4j
+### Using Task (Recommended)
+
+If you have Go Task installed, you can use the provided Taskfile to manage the server:
+
+```bash
+# Show available tasks
+task
+
+# Start everything (Docker + Server)
+task run
+
+# Start development environment (Docker + Server + Test)
+task dev
+
+# Stop all services
+task down
+```
+
+### Using Docker Compose directly
 
 1. Start the Neo4j container:
 ```bash
@@ -38,7 +57,7 @@ docker-compose up -d
 
 2. Wait for Neo4j to be ready (the container will show as "healthy" in `docker ps`)
 
-### Running the MCP Server
+### Running the MCP Server directly
 
 Start the server with:
 ```bash
@@ -49,8 +68,16 @@ The server will start in stdio mode, ready to accept MCP protocol messages.
 
 ## Testing
 
-A test client is provided to verify the server functionality:
+### Using Task
 
+Run the test client:
+```bash
+task test
+```
+
+### Running directly
+
+Run the test client:
 ```bash
 poetry run python src/test_mcp_client.py
 ```
@@ -95,6 +122,26 @@ Example input:
 
 ## Development
 
+### Using Task
+
+The project includes several development tasks:
+
+```bash
+# Format code
+task format
+
+# Run linter
+task lint
+
+# Run tests
+task test-all
+
+# Start development environment
+task dev
+```
+
+### Running directly
+
 This project uses several development tools that are automatically installed with Poetry:
 
 - `black` for code formatting
@@ -137,4 +184,18 @@ The Neo4j container is configured with the following settings:
 - File import/export enabled
 - Health check configured
 
-You can modify these settings in the `docker-compose.yml` file. 
+You can modify these settings in the `docker-compose.yml` file.
+
+## Task Commands Reference
+
+- `task` - Show available tasks
+- `task run` - Start Docker and MCP server
+- `task dev` - Start development environment (Docker + Server + Test)
+- `task docker` - Start Neo4j database
+- `task server` - Run the MCP server
+- `task test` - Run the test client
+- `task down` - Stop all Docker services
+- `task format` - Format code using black and isort
+- `task lint` - Run flake8 linter
+- `task test-all` - Run all tests
+- `task help` - Show detailed help for all tasks 

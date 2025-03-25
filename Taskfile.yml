@@ -1,0 +1,68 @@
+version: '3'
+
+tasks:
+  default:
+    desc: Show help for all tasks
+    cmds:
+      - task --list-all
+
+  docker:
+    desc: Start the Neo4j database using Docker Compose
+    cmds:
+      - docker compose up -d
+    status:
+      - docker compose ps --quiet neo4j
+
+  server:
+    desc: Run the MCP stdio server
+    deps: [docker]
+    cmds:
+      - poetry run python src/server.py
+
+  test:
+    desc: Run the test client to verify server functionality
+    deps: [docker]
+    cmds:
+      - poetry run python src/test_mcp_client.py
+
+  run:
+    desc: Start both Docker services and the MCP stdio server
+    deps: [docker]
+    cmds:
+      - task: server
+
+  down:
+    desc: Stop all Docker services
+    cmds:
+      - docker compose down
+
+  dev:
+    desc: Start development environment (Docker + Server + Test)
+    deps: [docker]
+    cmds:
+      - task: server
+      - task: test
+
+  format:
+    desc: Format code using black and isort
+    cmds:
+      - poetry run black .
+      - poetry run isort .
+
+  lint:
+    desc: Run flake8 linter
+    cmds:
+      - poetry run flake8
+
+  test-all:
+    desc: Run all tests
+    cmds:
+      - poetry run pytest
+
+  help:
+    desc: Show detailed help for all tasks
+    cmds:
+      - task --help
+      - task --list-all
+      
+
