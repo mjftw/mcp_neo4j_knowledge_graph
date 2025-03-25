@@ -11,7 +11,7 @@ tasks:
     cmds:
       - docker compose up -d
     status:
-      - docker compose ps --quiet neo4j
+      - test ! -z "$(docker compose ps --quiet neo4j)"
 
   server:
     desc: Run the MCP stdio server
