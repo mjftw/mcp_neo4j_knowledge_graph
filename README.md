@@ -192,6 +192,15 @@ Example input:
 }
 ```
 
+## Planned Features
+
+For a comprehensive list of planned features and enhancements, please see [wanted-features.md](wanted-features.md). This document outlines additional tools and capabilities that are being considered for future development, including:
+- Enhanced query and search capabilities
+- Advanced entity management tools
+- Improved schema validation and management
+- Graph analytics and visualization features
+- Integration and batch operation capabilities
+
 ## Development
 
 ### Using Task
