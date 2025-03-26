@@ -66,6 +66,57 @@ def create_server():
         return {"result": results}
 
     @mcp.tool()
+    async def introspect_schema() -> Dict:
+        """Introspect the Neo4j database schema to get information about node labels and relationship types"""
+        if "driver" not in mcp.state:
+            raise ValueError("Neo4j driver not found in server state")
+        
+        driver = mcp.state["driver"]
+        schema_info = {
+            "node_labels": [],
+            "relationship_types": [],
+            "node_properties": {},
+            "relationship_properties": {}
+        }
+        
+        async with driver.session() as session:
+            # Get all node labels
+            labels_query = "CALL db.labels() YIELD label RETURN label"
+            labels_result = await session.run(labels_query)
+            schema_info["node_labels"] = [record["label"] async for record in labels_result]
+            
+            # Get all relationship types
+            rel_types_query = "CALL db.relationshipTypes() YIELD relationshipType RETURN relationshipType"
+            rel_types_result = await session.run(rel_types_query)
+            schema_info["relationship_types"] = [record["relationshipType"] async for record in rel_types_result]
+            
+            # Get property keys for each node label
+            for label in schema_info["node_labels"]:
+                props_query = f"""
+                MATCH (n:{label})
+                WITH n LIMIT 1
+                RETURN keys(n) as properties
+                """
+                props_result = await session.run(props_query)
+                record = await props_result.single()
+                if record:
+                    schema_info["node_properties"][label] = record["properties"]
+            
+            # Get property keys for each relationship type
+            for rel_type in schema_info["relationship_types"]:
+                props_query = f"""
+                MATCH ()-[r:{rel_type}]->()
+                WITH r LIMIT 1
+                RETURN keys(r) as properties
+                """
+                props_result = await session.run(props_query)
+                record = await props_result.single()
+                if record:
+                    schema_info["relationship_properties"][rel_type] = record["properties"]
+        
+        return {"schema": schema_info}
+
+    @mcp.tool()
     async def create_relations(relations: List[Dict]) -> Dict:
         """Create multiple new relations between entities"""
         if "driver" not in mcp.state:

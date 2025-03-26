@@ -49,6 +49,17 @@ async def main():
                 name, description = tool
                 print(f"- {name}: {description}")
 
+            # Test the introspect_schema tool
+            print("\nTesting introspect_schema tool...")
+            try:
+                result = await client.call_tool("introspect_schema", {})
+                # Access the content from the result
+                schema_data = result.content[0].text
+                print(f"Schema information:")
+                print(schema_data)
+            except Exception as e:
+                print(f"Error: {e}")
+
             # Test the create_entities tool
             print("\nTesting create_entities tool...")
             try:
