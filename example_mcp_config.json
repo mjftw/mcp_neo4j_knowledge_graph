@@ -1,92 +1,92 @@
 {
-    "mcp_servers": [
-        {
-            "name": "Neo4j Knowledge Graph",
-            "command": [
-                "poetry",
-                "run",
-                "python",
-                "src/server.py"
-            ],
-            "description": "Local Neo4j-based knowledge graph server using stdio transport",
-            "capabilities": {
-                "tools": [
-                    {
-                        "name": "create_entities",
-                        "description": "Create multiple new entities in the knowledge graph",
-                        "parameters": {
-                            "type": "object",
-                            "properties": {
-                                "entities": {
-                                    "type": "array",
-                                    "items": {
-                                        "type": "object",
-                                        "properties": {
-                                            "type": {
-                                                "type": "string",
-                                                "description": "The type of entity (e.g., Person, Organization)"
-                                            },
-                                            "properties": {
-                                                "type": "object",
-                                                "description": "Properties of the entity (e.g., name, age, occupation)"
-                                            }
-                                        },
-                                        "required": [
-                                            "type",
-                                            "properties"
-                                        ]
-                                    }
-                                },
-                                "context": {
-                                    "type": "object",
-                                    "description": "Additional context for entity creation"
-                                }
-                            },
-                            "required": [
-                                "entities",
-                                "context"
-                            ]
-                        }
+  "mcp_servers": [
+    {
+      "name": "Neo4j Knowledge Graph",
+      "command": [
+        "poetry",
+        "run",
+        "python",
+        "src/server.py"
+      ],
+      "description": "Local Neo4j-based knowledge graph server using stdio transport",
+      "capabilities": {
+        "tools": [
+          {
+            "name": "create_entities",
+            "description": "Create multiple new entities in the knowledge graph",
+            "parameters": {
+              "type": "object",
+              "properties": {
+                "entities": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "description": "The type of entity (e.g., Person, Organization)"
+                      },
+                      "properties": {
+                        "type": "object",
+                        "description": "Properties of the entity (e.g., name, age, occupation)"
+                      }
                     },
-                    {
-                        "name": "create_relations",
-                        "description": "Create multiple new relations between entities",
-                        "parameters": {
-                            "type": "object",
-                            "properties": {
-                                "relations": {
-                                    "type": "array",
-                                    "items": {
-                                        "type": "object",
-                                        "properties": {
-                                            "type": {
-                                                "type": "string",
-                                                "description": "The type of relation (e.g., KNOWS, WORKS_FOR)"
-                                            },
-                                            "from": {
-                                                "type": "string",
-                                                "description": "ID of the source entity"
-                                            },
-                                            "to": {
-                                                "type": "string",
-                                                "description": "ID of the target entity"
-                                            }
-                                        },
-                                        "required": [
-                                            "type",
-                                            "from",
-                                            "to"
-                                        ]
-                                    }
-                                }
-                            },
-                            "required": [
-                                "relations"
-                            ]
-                        }
-                    }
-                ]
+                    "required": [
+                      "type",
+                      "properties"
+                    ]
+                  }
+                },
+                "context": {
+                  "type": "object",
+                  "description": "Additional context for entity creation"
+                }
+              },
+              "required": [
+                "entities",
+                "context"
+              ]
             }
-        }
-    ]
+          },
+          {
+            "name": "create_relations",
+            "description": "Create multiple new relations between entities",
+            "parameters": {
+              "type": "object",
+              "properties": {
+                "relations": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "description": "The type of relation (e.g., KNOWS, WORKS_FOR)"
+                      },
+                      "from": {
+                        "type": "string",
+                        "description": "ID of the source entity"
+                      },
+                      "to": {
+                        "type": "string",
+                        "description": "ID of the target entity"
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "from",
+                      "to"
+                    ]
+                  }
+                }
+              },
+              "required": [
+                "relations"
+              ]
+            }
+          }
+        ]
+      }
+    }
+  ]
 }
