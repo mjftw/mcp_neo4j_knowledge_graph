@@ -20,7 +20,7 @@ tasks:
       - poetry run python src/server.py
 
   test:
-    desc: Run the test client to verify server functionality
+    desc: Run the MCP client test
     deps: [docker]
     cmds:
       - poetry run python src/test_mcp_client.py
@@ -30,6 +30,21 @@ tasks:
     deps: [docker]
     cmds:
       - poetry run python src/test_mcp_config.py
+
+  test-db:
+    desc: Test the Neo4j database connection
+    deps: [docker]
+    cmds:
+      - poetry run python src/test_neo4j_connection.py
+
+  test-all:
+    desc: Run all tests (pytest and individual test scripts)
+    deps: [docker]
+    cmds:
+      - poetry run pytest
+      - task: test-config
+      - task: test
+      - task: test-db
 
   run:
     desc: Start both Docker services and the MCP stdio server
@@ -59,12 +74,6 @@ tasks:
     desc: Run flake8 linter
     cmds:
       - poetry run flake8
-
-  test-all:
-    desc: Run all tests
-    cmds:
-      - poetry run pytest
-      - task: test-config
 
   help:
     desc: Show detailed help for all tasks

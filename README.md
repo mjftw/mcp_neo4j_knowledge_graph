@@ -28,6 +28,27 @@ curl -sSL https://install.python-poetry.org | python3 -
 poetry install
 ```
 
+## Configuration
+
+### Claude Desktop Configuration
+
+For Ubuntu users running Claude Desktop, you can configure the MCP server by adding it to your Claude desktop configuration file at:
+```
+~/.config/Claude/claude_desktop_config.json
+```
+
+An example configuration is provided in `example_mcp_config.json`. You can copy and modify this file:
+
+```bash
+cp example_mcp_config.json ~/.config/Claude/claude_desktop_config.json
+```
+
+The configuration includes:
+- Server name and description
+- Command to start the server
+- Available tools and their parameters
+- Required fields and data types
+
 ## Running the Server
 
 ### Using Task (Recommended)
@@ -67,6 +88,57 @@ poetry run python src/server.py
 The server will start in stdio mode, ready to accept MCP protocol messages.
 
 ## Testing
+
+### Test Scripts
+
+The project includes three test scripts for different aspects of the system:
+
+1. `src/test_mcp_client.py` - Tests the MCP client functionality
+   - Verifies server startup
+   - Tests tool listing
+   - Tests schema introspection
+   - Tests entity creation
+   ```bash
+   task test  # Run just the client test
+   ```
+
+2. `src/test_mcp_config.py` - Tests the MCP configuration
+   - Validates configuration file loading
+   - Tests server connection using the official MCP SDK
+   - Verifies all required tools are available
+   - Can be run standalone or as part of the test suite
+   ```bash
+   task test-config  # Run just the config test
+   ```
+
+3. `src/test_neo4j_connection.py` - Tests the Neo4j database connection
+   - Verifies database connectivity
+   - Tests basic query functionality
+   - Checks environment configuration
+   ```bash
+   poetry run python src/test_neo4j_connection.py  # Run directly
+   ```
+
+### Running Tests
+
+You can run the tests in several ways:
+
+1. Run all tests together:
+   ```bash
+   task test-all  # Runs pytest and all test scripts
+   ```
+
+2. Run individual test scripts:
+   ```bash
+   task test        # Run MCP client test
+   task test-config # Run MCP config test
+   poetry run python src/test_neo4j_connection.py  # Run Neo4j connection test
+   ```
+
+3. Run tests with pytest directly:
+   ```bash
+   poetry run pytest  # Run all pytest-compatible tests
+   ```
 
 ### Using Task
 
