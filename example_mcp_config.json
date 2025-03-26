@@ -1,14 +1,11 @@
 {
-  "mcp_servers": [
-    {
-      "name": "Neo4j Knowledge Graph",
-      "command": [
-        "poetry",
-        "run",
-        "python",
-        "src/server.py"
-      ],
-      "description": "Local Neo4j-based knowledge graph server using stdio transport",
+  "mcpServers": {
+    "neo4j-knowledge-graph": {
+      "command": "/home/merlin/projects/worthafen/dist/neo4j_mcp_server",
+      "args": [],
+      "description": "Local Neo4j-based knowledge graph server",
+      "stdio": true,
+      "workingDirectory": "/home/merlin/projects/worthafen",
       "capabilities": {
         "tools": [
           {
@@ -84,9 +81,18 @@
                 "relations"
               ]
             }
+          },
+          {
+            "name": "introspect_schema",
+            "description": "Introspect the Neo4j database schema to get information about node labels and relationship types",
+            "parameters": {
+              "type": "object",
+              "properties": {},
+              "required": []
+            }
           }
         ]
       }
     }
-  ]
+  }
 }
