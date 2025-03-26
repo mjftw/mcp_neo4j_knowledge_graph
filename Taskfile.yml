@@ -89,10 +89,13 @@ tasks:
     generates:
       - dist/neo4j_mcp_server
 
-  run-built:
-    desc: Run the built standalone executable
+  start:
+    desc: Run the built standalone executable (builds if needed)
     deps: [docker]
     cmds:
+      - task: build
+        status:
+          - test -f dist/neo4j_mcp_server
       - chmod +x dist/neo4j_mcp_server
       - ./dist/neo4j_mcp_server
     sources:
