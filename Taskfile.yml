@@ -80,5 +80,22 @@ tasks:
     cmds:
       - task --help
       - task --list-all
+
+  build:
+    desc: Build standalone executable using PyInstaller
+    cmds:
+      - mkdir -p dist
+      - poetry run pyinstaller --onefile --name neo4j_mcp_server --add-data ".env:." src/server.py
+    generates:
+      - dist/neo4j_mcp_server
+
+  run-built:
+    desc: Run the built standalone executable
+    deps: [docker]
+    cmds:
+      - chmod +x dist/neo4j_mcp_server
+      - ./dist/neo4j_mcp_server
+    sources:
+      - dist/neo4j_mcp_server
       
 
