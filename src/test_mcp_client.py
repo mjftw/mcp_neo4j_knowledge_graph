@@ -85,6 +85,26 @@ async def main():
             except Exception as e:
                 print(f"Error: {e}")
 
+            # Test the search_entities tool
+            print("\nTesting search_entities tool...")
+            try:
+                search_result = await client.call_tool(
+                    "search_entities",
+                    {
+                        "search_term": "John",
+                        "entity_type": "Person",
+                        "include_relationships": True,
+                        "fuzzy_match": True,
+                    },
+                )
+                print("Search results:")
+                if search_result.content:
+                    print(search_result.content[0].text)
+                else:
+                    print("No results found")
+            except Exception as e:
+                print(f"Error searching entities: {e}")
+
             print("\nTest completed successfully!")
 
             # Clean up

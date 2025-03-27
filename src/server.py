@@ -160,6 +160,93 @@ def create_server():
 
         return {"result": results}
 
+    @mcp.tool()
+    async def search_entities(
+        search_term: str,
+        entity_type: str = None,
+        properties: List[str] = None,
+        include_relationships: bool = False,
+        fuzzy_match: bool = True
+    ) -> Dict[str, Any]:
+        """Search for entities in the knowledge graph with fuzzy matching support
+        
+        Args:
+            search_term: The text to search for
+            entity_type: Optional entity type to filter by
+            properties: Optional list of property names to search in (defaults to all)
+            include_relationships: Whether to include relationships in results
+            fuzzy_match: Whether to use fuzzy matching for text properties
+        """
+        if "driver" not in mcp.state:
+            raise ValueError("Neo4j driver not found in server state")
+
+        driver = mcp.state["driver"]
+        results = []
+
+        async with driver.session() as session:
+            # Build the query dynamically based on parameters
+            where_clauses = []
+            params = {"search_term": search_term}
+            
+            # Add type filter if specified
+            type_match = "n:Entity"
+            if entity_type:
+                type_match += f":{entity_type}"
+                
+            # Build property matching clause
+            if properties:
+                property_clauses = []
+                for prop in properties:
+                    if fuzzy_match:
+                        property_clauses.append(f"n.{prop} =~ '(?i).*{search_term}.*'")
+                    else:
+                        property_clauses.append(f"n.{prop} = $search_term")
+                if property_clauses:
+                    where_clauses.append(f"({' OR '.join(property_clauses)})")
+            else:
+                # Search all string properties with fuzzy matching
+                if fuzzy_match:
+                    where_clauses.append("ANY (prop IN keys(n) WHERE n[prop] =~ $fuzzy_pattern)")
+                    params["fuzzy_pattern"] = f"(?i).*{search_term}.*"
+                else:
+                    where_clauses.append("ANY (prop IN keys(n) WHERE n[prop] = $search_term)")
+
+            # Construct the full query
+            query = f"""
+            MATCH (n:{type_match})
+            WHERE {' AND '.join(where_clauses)}
+            """
+
+            # Optionally include relationships
+            if include_relationships:
+                query += """
+                OPTIONAL MATCH (n)-[r]-(related)
+                WITH n, collect({type: type(r), direction: CASE WHEN startNode(r) = n THEN 'outgoing' ELSE 'incoming' END, 
+                               node: {id: related.id, type: labels(related)[0], properties: properties(related)}}) as rels
+                """
+            
+            query += """
+            RETURN {
+                id: n.id,
+                type: labels(n)[0],
+                properties: properties(n)
+            } as node
+            """
+            
+            if include_relationships:
+                query += ", rels as relationships"
+
+            # Execute query
+            result = await session.run(query, params)
+            
+            async for record in result:
+                node_data = record["node"]
+                if include_relationships:
+                    node_data["relationships"] = record["relationships"]
+                results.append(node_data)
+
+        return {"results": results}
+
     return mcp
 
 
