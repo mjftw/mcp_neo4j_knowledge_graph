@@ -23,6 +23,7 @@ isort = "^5.13.2"
 flake8 = "^7.0.0"
 pytest-asyncio = "^0.26.0"
 pyinstaller = "^6.12.0"
+pytest-cov = "^4.0.0"
 
 [build-system]
 requires = ["poetry-core"]
@@ -35,4 +36,14 @@ include = '\.pyi?$'
 
 [tool.isort]
 profile = "black"
-multi_line_output = 3 
+multi_line_output = 3
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = "test_*.py"
+python_classes = "Test*"
+python_functions = "test_*"
+markers = [
+    "integration: mark test as an integration test",
+]
+asyncio_mode = "auto" 
