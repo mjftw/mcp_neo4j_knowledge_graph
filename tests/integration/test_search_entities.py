@@ -4,9 +4,9 @@ from typing import AsyncGenerator, Dict, List
 import pytest
 from neo4j import AsyncDriver, AsyncGraphDatabase
 
-from src.tools.create_entities import create_entities_impl
-from src.tools.create_relations import create_relations_impl
-from src.tools.search_entities import search_entities_impl
+from src.tools.create_entities import create_entities_impl, CreateEntityRequest
+from src.tools.create_relations import create_relations_impl, CreateRelationRequest
+from src.tools.search_entities import search_entities_impl, SearchEntityRequest
 
 
 @pytest.fixture
@@ -32,65 +32,66 @@ async def create_test_dataset(driver: AsyncDriver, test_id: str) -> Dict[str, Li
     """
     # Create entities
     entities = [
-        {
-            "type": "Person",
-            "properties": {
+        CreateEntityRequest(
+            type="Person",
+            properties={
                 "name": f"John Smith_{test_id}",
                 "age": 30,
                 "email": f"john_{test_id}@example.com"
             }
-        },
-        {
-            "type": "Person",
-            "properties": {
+        ),
+        CreateEntityRequest(
+            type="Person",
+            properties={
                 "name": f"Jane Smith_{test_id}",
                 "age": 28,
                 "email": f"jane_{test_id}@example.com"
             }
-        },
-        {
-            "type": "Company",
-            "properties": {
+        ),
+        CreateEntityRequest(
+            type="Company",
+            properties={
                 "name": f"Tech Corp_{test_id}",
                 "industry": "Technology"
             }
-        },
-        {
-            "type": "Project",
-            "properties": {
+        ),
+        CreateEntityRequest(
+            type="Project",
+            properties={
                 "name": f"Project Alpha_{test_id}",
                 "status": "Active"
             }
-        }
+        )
     ]
     
     entity_result = await create_entities_impl(driver, entities)
-    created_entities = entity_result["result"]
+    created_entities = entity_result.result
     
     # Create relationships
     relations = [
-        {
-            "from": created_entities[0]["id"],  # John
-            "to": created_entities[2]["id"],    # Tech Corp
-            "type": "WORKS_AT"
-        },
-        {
-            "from": created_entities[1]["id"],  # Jane
-            "to": created_entities[2]["id"],    # Tech Corp
-            "type": "WORKS_AT"
-        },
-        {
-            "from": created_entities[0]["id"],  # John
-            "to": created_entities[3]["id"],    # Project Alpha
-            "type": "MANAGES"
-        }
+        CreateRelationRequest(
+            type="WORKS_AT",
+            from_id=created_entities[0].id,  # John
+            to_id=created_entities[2].id     # Tech Corp
+        ),
+        CreateRelationRequest(
+            type="WORKS_AT",
+            from_id=created_entities[1].id,  # Jane
+            to_id=created_entities[2].id     # Tech Corp
+        ),
+        CreateRelationRequest(
+            type="MANAGES",
+            from_id=created_entities[0].id,  # John
+            to_id=created_entities[3].id     # Project Alpha
+        )
     ]
     
     relation_result = await create_relations_impl(driver, relations)
+    created_relations = relation_result.result
     
     return {
         "entities": created_entities,
-        "relations": relation_result["result"]
+        "relations": created_relations
     }
 
 
@@ -104,13 +105,15 @@ async def test_should_find_entity_by_exact_name_match(driver: AsyncDriver):
     # Act
     result = await search_entities_impl(
         driver,
-        search_term=f"John Smith_{test_id}",
-        fuzzy_match=False
+        SearchEntityRequest(
+            search_term=f"John Smith_{test_id}",
+            fuzzy_match=False
+        )
     )
     
     # Assert
-    assert len(result["results"]) == 1
-    assert result["results"][0]["properties"]["name"] == f"John Smith_{test_id}"
+    assert len(result.results) == 1
+    assert result.results[0].properties["name"] == f"John Smith_{test_id}"
 
 
 @pytest.mark.asyncio
@@ -123,15 +126,15 @@ async def test_should_find_multiple_entities_with_fuzzy_name_match(driver: Async
     # Act
     result = await search_entities_impl(
         driver,
-        search_term=f"Smith_{test_id}",
-        fuzzy_match=True
+        SearchEntityRequest(
+            search_term=f"Smith_{test_id}",
+            fuzzy_match=True
+        )
     )
     
     # Assert
-    assert len(result["results"]) == 2  # Should find both John and Jane Smith
-    names = [node["properties"]["name"] for node in result["results"]]
-    assert f"John Smith_{test_id}" in names
-    assert f"Jane Smith_{test_id}" in names
+    assert len(result.results) == 2
+    assert all("Smith" in entity.properties["name"] for entity in result.results)
 
 
 @pytest.mark.asyncio
@@ -144,15 +147,16 @@ async def test_should_filter_entities_by_type(driver: AsyncDriver):
     # Act
     result = await search_entities_impl(
         driver,
-        search_term=test_id,
-        entity_type="Person",
-        fuzzy_match=True
+        SearchEntityRequest(
+            search_term=test_id,
+            entity_type="Person",
+            fuzzy_match=True
+        )
     )
     
     # Assert
-    assert len(result["results"]) == 2
-    for node in result["results"]:
-        assert "Person" in node["type"]
+    assert len(result.results) == 2
+    assert all("Person" in entity.type for entity in result.results)
 
 
 @pytest.mark.asyncio
@@ -165,13 +169,15 @@ async def test_should_find_entity_by_property_value(driver: AsyncDriver):
     # Act
     result = await search_entities_impl(
         driver,
-        search_term=f"john_{test_id}@example.com",
-        properties=["email"]
+        SearchEntityRequest(
+            search_term=f"john_{test_id}@example.com",
+            properties=["email"]
+        )
     )
     
     # Assert
-    assert len(result["results"]) == 1
-    assert result["results"][0]["properties"]["email"] == f"john_{test_id}@example.com"
+    assert len(result.results) == 1
+    assert result.results[0].properties["email"] == f"john_{test_id}@example.com"
 
 
 @pytest.mark.asyncio
@@ -184,19 +190,19 @@ async def test_should_include_relationships_when_requested(driver: AsyncDriver):
     # Act
     result = await search_entities_impl(
         driver,
-        search_term=f"John Smith_{test_id}",
-        include_relationships=True
+        SearchEntityRequest(
+            search_term=f"John Smith_{test_id}",
+            include_relationships=True
+        )
     )
     
     # Assert
-    assert len(result["results"]) == 1
-    node = result["results"][0]
-    assert "relationships" in node
-    
-    relationships = node["relationships"]
-    rel_types = [rel["type"] for rel in relationships]
-    assert "WORKS_AT" in rel_types
-    assert "MANAGES" in rel_types
+    assert len(result.results) == 1
+    entity = result.results[0]
+    assert entity.properties["name"] == f"John Smith_{test_id}"
+    assert len(entity.relationships) == 2
+    assert any(rel["type"] == "WORKS_AT" for rel in entity.relationships)
+    assert any(rel["type"] == "MANAGES" for rel in entity.relationships)
 
 
 @pytest.mark.asyncio
@@ -209,11 +215,13 @@ async def test_should_return_empty_results_for_nonexistent_entity(driver: AsyncD
     # Act
     result = await search_entities_impl(
         driver,
-        search_term=f"NonexistentPerson_{test_id}"
+        SearchEntityRequest(
+            search_term=f"NonexistentPerson_{test_id}"
+        )
     )
     
     # Assert
-    assert len(result["results"]) == 0
+    assert len(result.results) == 0
 
 
 @pytest.mark.asyncio
@@ -226,13 +234,15 @@ async def test_should_match_case_insensitively(driver: AsyncDriver):
     # Act
     result = await search_entities_impl(
         driver,
-        search_term=f"john smith_{test_id}",  # lowercase
-        fuzzy_match=True
+        SearchEntityRequest(
+            search_term=f"john smith_{test_id}",  # lowercase
+            fuzzy_match=True
+        )
     )
     
     # Assert
-    assert len(result["results"]) == 1
-    assert result["results"][0]["properties"]["name"] == f"John Smith_{test_id}"
+    assert len(result.results) == 1
+    assert result.results[0].properties["name"] == f"John Smith_{test_id}"
 
 
 @pytest.mark.asyncio
@@ -245,16 +255,17 @@ async def test_should_find_entity_by_exact_name(driver: AsyncDriver):
     # Act
     result = await search_entities_impl(
         driver,
-        search_term=f"Tech Corp_{test_id}",
-        properties=["name"],
-        fuzzy_match=False
+        SearchEntityRequest(
+            search_term=f"Tech Corp_{test_id}",
+            properties=["name"],
+            fuzzy_match=False
+        )
     )
 
     # Assert
-    assert len(result["results"]) == 1, f"Expected 1 result, got {len(result['results'])}"
-    node = result["results"][0]
-    assert node["properties"]["name"] == f"Tech Corp_{test_id}"
-    assert node["properties"]["industry"] == "Technology"
+    assert len(result.results) == 1
+    assert result.results[0].properties["name"] == f"Tech Corp_{test_id}"
+    assert "Company" in result.results[0].type
 
 
 @pytest.mark.asyncio
@@ -267,13 +278,15 @@ async def test_should_find_entity_by_type_and_property(driver: AsyncDriver):
     # Act
     results = await search_entities_impl(
         driver,
-        search_term=test_id,
-        entity_type="Company",
-        properties=["name"],
-        fuzzy_match=True
+        SearchEntityRequest(
+            search_term=test_id,
+            entity_type="Company",
+            properties=["name"],
+            fuzzy_match=True
+        )
     )
 
     # Assert
-    assert len(results["results"]) == 1, f"Expected 1 result, got {len(results['results'])}"
-    assert results["results"][0]["properties"]["name"] == f"Tech Corp_{test_id}"
-    assert results["results"][0]["properties"]["industry"] == "Technology" 
+    assert len(results.results) == 1
+    assert "Company" in results.results[0].type
+    assert test_id in results.results[0].properties["name"] 

@@ -1,46 +1,62 @@
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 from neo4j import AsyncDriver
+from dataclasses import dataclass
+from mcp.server.fastmcp import FastMCP
 
 
-async def search_entities_impl(
-    driver: AsyncDriver,
-    search_term: str,
-    entity_type: str = None,
-    properties: List[str] = None,
-    include_relationships: bool = False,
+@dataclass
+class SearchEntityRequest:
+    """Request to search for entities"""
+    search_term: str
+    entity_type: Optional[str] = None
+    properties: Optional[List[str]] = None
+    include_relationships: bool = False
     fuzzy_match: bool = True
-) -> Dict[str, Any]:
+
+
+@dataclass
+class Entity:
+    """Represents a Neo4j entity with its properties"""
+    id: str
+    type: List[str]
+    properties: Dict[str, any]
+    relationships: Optional[List[Dict[str, any]]] = None
+
+
+@dataclass
+class SearchEntitiesResult:
+    """Result of searching for entities"""
+    results: List[Entity]
+
+
+async def search_entities_impl(driver: AsyncDriver, search_request: SearchEntityRequest) -> SearchEntitiesResult:
     """Search for entities in the knowledge graph with fuzzy matching support
     
     Args:
         driver: Neo4j async driver instance
-        search_term: The text to search for
-        entity_type: Optional entity type to filter by
-        properties: Optional list of property names to search in (defaults to all)
-        include_relationships: Whether to include relationships in results
-        fuzzy_match: Whether to use fuzzy matching for text properties
+        search_request: Search parameters including query and filters
         
     Returns:
-        Dict containing the search results
+        SearchEntitiesResult containing matching entities
     """
     results = []
 
     async with driver.session() as session:
         # Build the query dynamically based on parameters
         where_clauses = []
-        params = {"search_term": search_term}
+        params = {"search_term": search_request.search_term}
         
         # Add type filter if specified
         type_match = "Entity"
-        if entity_type:
-            type_match += f":{entity_type}"
+        if search_request.entity_type:
+            type_match += f":{search_request.entity_type}"
             
         # Build property matching clause
-        if properties:
+        if search_request.properties:
             property_clauses = []
-            words = search_term.split()
-            for prop in properties:
-                if fuzzy_match:
+            words = search_request.search_term.split()
+            for prop in search_request.properties:
+                if search_request.fuzzy_match:
                     # For each property, check if at least one word matches
                     property_clauses.append(
                         f"({' OR '.join([f'toLower(toString(n.{prop})) CONTAINS toLower($word_{i})' for i, _ in enumerate(words)])})"
@@ -49,15 +65,14 @@ async def search_entities_impl(
                     for i, word in enumerate(words):
                         params[f"word_{i}"] = word
                 else:
-                    property_clauses.append(f"n.{prop} = $search_term")
+                    property_clauses.append(f"n.{prop} = '{search_request.search_term}'")
             if property_clauses:
-                # Match if any property matches
                 where_clauses.append(f"({' OR '.join(property_clauses)})")
         else:
             # Search all string properties with fuzzy matching
-            if fuzzy_match:
+            if search_request.fuzzy_match:
                 where_clauses.append("ANY (prop IN keys(n) WHERE n[prop] =~ $fuzzy_pattern)")
-                params["fuzzy_pattern"] = f"(?i).*{search_term}.*"
+                params["fuzzy_pattern"] = f"(?i).*{search_request.search_term}.*"
             else:
                 where_clauses.append("ANY (prop IN keys(n) WHERE n[prop] = $search_term)")
 
@@ -70,7 +85,7 @@ async def search_entities_impl(
             query += f"WHERE {' AND '.join(where_clauses)}\n"
 
         # Optionally include relationships
-        if include_relationships:
+        if search_request.include_relationships:
             query += """
             OPTIONAL MATCH (n)-[r]-(related)
             WITH n, collect({type: type(r), direction: CASE WHEN startNode(r) = n THEN 'outgoing' ELSE 'incoming' END, 
@@ -85,7 +100,7 @@ async def search_entities_impl(
         } as node
         """
         
-        if include_relationships:
+        if search_request.include_relationships:
             query += ", rels as relationships"
 
         # Debug logging
@@ -97,34 +112,53 @@ async def search_entities_impl(
         
         async for record in result:
             node_data = record["node"]
-            if include_relationships:
+            if search_request.include_relationships:
                 node_data["relationships"] = record["relationships"]
-            results.append(node_data)
+            
+            # Convert to Entity dataclass
+            results.append(Entity(
+                id=node_data["id"],
+                type=node_data["type"],
+                properties=node_data["properties"],
+                relationships=node_data.get("relationships")
+            ))
 
-    return {"results": results}
+    return SearchEntitiesResult(results=results)
 
 
-async def register(mcp):
-    @mcp.tool(
-        name="search_entities",
-        description="Search for entities in the knowledge graph with fuzzy matching support"
-    )
+async def register(server: FastMCP) -> None:
+    """Register the search_entities tool with the MCP server."""
+    
+    @server.tool("mcp_neo4j_knowledge_graph_search_entities")
     async def search_entities(
         search_term: str,
-        entity_type: str = None,
-        properties: List[str] = None,
+        entity_type: Optional[str] = None,
+        properties: Optional[List[str]] = None,
         include_relationships: bool = False,
         fuzzy_match: bool = True
     ) -> Dict[str, Any]:
         """Search for entities in the knowledge graph with fuzzy matching support"""
-        if "driver" not in mcp.state:
+        if "driver" not in server.state:
             raise ValueError("Neo4j driver not found in server state")
 
-        return await search_entities_impl(
-            mcp.state["driver"],
-            search_term,
-            entity_type,
-            properties,
-            include_relationships,
-            fuzzy_match
-        ) 
+        search_request = SearchEntityRequest(
+            search_term=search_term,
+            entity_type=entity_type,
+            properties=properties,
+            include_relationships=include_relationships,
+            fuzzy_match=fuzzy_match
+        )
+        
+        result = await search_entities_impl(server.state["driver"], search_request)
+        
+        # Convert result back to dict format for MCP interface
+        return {
+            "results": [
+                {
+                    "id": entity.id,
+                    "type": entity.type,
+                    "properties": entity.properties,
+                    **({"relationships": entity.relationships} if entity.relationships else {})
+                } for entity in result.results
+            ]
+        } 

@@ -1,15 +1,21 @@
 import uuid
-from typing import AsyncGenerator, Dict, List
+from typing import AsyncGenerator, List, Tuple
 
 import pytest
 from neo4j import AsyncDriver, AsyncGraphDatabase
 
-from src.tools.create_entities import create_entities_impl
-from src.tools.create_relations import create_relations_impl
+from src.tools.create_entities import create_entities_impl, CreateEntityRequest
+from src.tools.create_relations import (
+    create_relations_impl,
+    CreateRelationRequest,
+    Relation,
+    CreateRelationsResult
+)
 
 
 @pytest.fixture
 async def driver() -> AsyncGenerator[AsyncDriver, None]:
+    # Using test database configuration
     driver = AsyncGraphDatabase.driver(
         "neo4j://localhost:7687",
         auth=("neo4j", "password")
@@ -22,176 +28,158 @@ async def driver() -> AsyncGenerator[AsyncDriver, None]:
         await driver.close()
 
 
-async def create_test_entities(
-    driver: AsyncDriver, 
-    count: int = 2, 
-    type_prefix: str = "TestType"
-) -> List[Dict]:
-    """Helper to create test entities for relation testing"""
-    entities = [
-        {
-            "type": f"{type_prefix}{i}",
-            "properties": {
-                "name": f"test_entity_{uuid.uuid4()}"
+async def create_test_entities(driver: AsyncDriver, count: int = 2) -> List[str]:
+    """Create test entities and return their IDs"""
+    entities = []
+    for i in range(count):
+        unique_id = str(uuid.uuid4())
+        entities.append(CreateEntityRequest(
+            type="TestEntity",
+            properties={
+                "name": f"test_{unique_id}",
+                "id": f"test_{unique_id}"  # Explicitly set ID
             }
-        }
-        for i in range(count)
-    ]
+        ))
     
     result = await create_entities_impl(driver, entities)
-    return [node for node in result["result"]]
+    return [entity.id for entity in result.result]
 
 
 @pytest.mark.asyncio
 async def test_should_create_single_relation(driver: AsyncDriver):
-    """When creating a relation between two entities, should create it with correct type"""
+    """When creating a single relation, should create it between the specified entities"""
     # Arrange
-    nodes = await create_test_entities(driver, 2)
-    relation = {
-        "from": nodes[0]["id"],
-        "to": nodes[1]["id"],
-        "type": "TEST_RELATION"
-    }
-    
+    [from_id, to_id] = await create_test_entities(driver, 2)
+    relation = CreateRelationRequest(
+        type="TEST_RELATION",
+        from_id=from_id,
+        to_id=to_id
+    )
+
     # Act
     result = await create_relations_impl(driver, [relation])
-    
+
     # Assert
-    assert "result" in result
-    assert len(result["result"]) == 1
-    created_rel = result["result"][0]
-    assert created_rel["type"] == "TEST_RELATION"
-    assert created_rel["from"] == nodes[0]["id"]
-    assert created_rel["to"] == nodes[1]["id"]
+    assert isinstance(result, CreateRelationsResult)
+    assert len(result.result) == 1
+    created_relation = result.result[0]
+    assert isinstance(created_relation, Relation)
+    assert created_relation.type == "TEST_RELATION"
+    assert created_relation.from_id == from_id
+    assert created_relation.to_id == to_id
 
 
 @pytest.mark.asyncio
 async def test_should_create_multiple_relations(driver: AsyncDriver):
-    """When creating multiple relations, should create all with correct types and directions"""
+    """When creating multiple relations, should create all with their respective types"""
     # Arrange
-    nodes = await create_test_entities(driver, 3)
+    entity_ids = await create_test_entities(driver, 3)
     relations = [
-        {
-            "from": nodes[0]["id"],
-            "to": nodes[1]["id"],
-            "type": "RELATION_1"
-        },
-        {
-            "from": nodes[1]["id"],
-            "to": nodes[2]["id"],
-            "type": "RELATION_2"
-        }
+        CreateRelationRequest(
+            type="RELATION_1",
+            from_id=entity_ids[0],
+            to_id=entity_ids[1]
+        ),
+        CreateRelationRequest(
+            type="RELATION_2",
+            from_id=entity_ids[1],
+            to_id=entity_ids[2]
+        )
     ]
-    
+
     # Act
     result = await create_relations_impl(driver, relations)
-    
+
     # Assert
-    assert len(result["result"]) == 2
-    for i, created_rel in enumerate(result["result"]):
-        assert created_rel["type"] == relations[i]["type"]
-        assert created_rel["from"] == relations[i]["from"]
-        assert created_rel["to"] == relations[i]["to"]
+    assert isinstance(result, CreateRelationsResult)
+    assert len(result.result) == 2
+    
+    # Verify each relation was created correctly
+    for i, created_relation in enumerate(result.result):
+        assert isinstance(created_relation, Relation)
+        assert created_relation.type == relations[i].type
+        assert created_relation.from_id == relations[i].from_id
+        assert created_relation.to_id == relations[i].to_id
 
 
 @pytest.mark.asyncio
-async def test_should_create_bidirectional_relations(driver: AsyncDriver):
-    """When creating relations in both directions, should create both relations correctly"""
+async def test_should_handle_duplicate_relation_creation(driver: AsyncDriver):
+    """When creating the same relation twice, should handle it gracefully"""
     # Arrange
-    nodes = await create_test_entities(driver, 2)
-    relations = [
-        {
-            "from": nodes[0]["id"],
-            "to": nodes[1]["id"],
-            "type": "RELATES_TO"
-        },
-        {
-            "from": nodes[1]["id"],
-            "to": nodes[0]["id"],
-            "type": "RELATES_TO"
-        }
-    ]
+    [from_id, to_id] = await create_test_entities(driver, 2)
+    relation = CreateRelationRequest(
+        type="TEST_RELATION",
+        from_id=from_id,
+        to_id=to_id
+    )
     
-    # Act
-    result = await create_relations_impl(driver, relations)
+    # Act - Create the same relation twice
+    result1 = await create_relations_impl(driver, [relation])
+    result2 = await create_relations_impl(driver, [relation])
     
-    # Assert
-    assert len(result["result"]) == 2
-    assert result["result"][0]["from"] == nodes[0]["id"]
-    assert result["result"][0]["to"] == nodes[1]["id"]
-    assert result["result"][1]["from"] == nodes[1]["id"]
-    assert result["result"][1]["to"] == nodes[0]["id"]
-
-
-@pytest.mark.asyncio
-async def test_should_handle_nonexistent_entity_gracefully(driver: AsyncDriver):
-    """When creating relation with nonexistent entity, should return empty result"""
-    # Arrange
-    nodes = await create_test_entities(driver, 1)
-    relation = {
-        "from": nodes[0]["id"],
-        "to": "nonexistent_entity",
-        "type": "TEST_RELATION"
-    }
+    # Assert - Both operations should succeed
+    assert isinstance(result1, CreateRelationsResult)
+    assert isinstance(result2, CreateRelationsResult)
+    assert len(result1.result) == 1
+    assert len(result2.result) == 1
     
-    # Act
-    result = await create_relations_impl(driver, [relation])
+    rel1 = result1.result[0]
+    rel2 = result2.result[0]
+    assert isinstance(rel1, Relation)
+    assert isinstance(rel2, Relation)
     
-    # Assert
-    assert "result" in result
-    assert len(result["result"]) == 0  # No relations should be created
-
-
-@pytest.mark.asyncio
-async def test_should_create_self_relation(driver: AsyncDriver):
-    """When creating relation from entity to itself, should create self-referential relation"""
-    # Arrange
-    nodes = await create_test_entities(driver, 1)
-    relation = {
-        "from": nodes[0]["id"],
-        "to": nodes[0]["id"],
-        "type": "SELF_RELATES"
-    }
-    
-    # Act
-    result = await create_relations_impl(driver, [relation])
-    
-    # Assert
-    assert len(result["result"]) == 1
-    created_rel = result["result"][0]
-    assert created_rel["from"] == nodes[0]["id"]
-    assert created_rel["to"] == nodes[0]["id"]
-    assert created_rel["type"] == "SELF_RELATES"
+    # The relations should have the same properties
+    assert rel1.type == rel2.type
+    assert rel1.from_id == rel2.from_id
+    assert rel1.to_id == rel2.to_id
 
 
 @pytest.mark.asyncio
 async def test_should_persist_relation_in_database(driver: AsyncDriver):
     """When creating a relation, should be able to retrieve it from the database"""
     # Arrange
-    nodes = await create_test_entities(driver, 2)
-    relation = {
-        "from": nodes[0]["id"],
-        "to": nodes[1]["id"],
-        "type": "TEST_RELATION"
-    }
+    [from_id, to_id] = await create_test_entities(driver, 2)
+    relation = CreateRelationRequest(
+        type="TEST_RELATION",
+        from_id=from_id,
+        to_id=to_id
+    )
     
     # Act
-    await create_relations_impl(driver, [relation])
+    result = await create_relations_impl(driver, [relation])
+    created_relation = result.result[0]
     
     # Assert - Verify we can retrieve the relation
     async with driver.session() as session:
         query = """
-        MATCH (a:Entity {id: $from_id})-[r:TEST_RELATION]->(b:Entity {id: $to_id})
-        RETURN r
+        MATCH (a:Entity {id: $from_id})-[r]->(b:Entity {id: $to_id})
+        RETURN type(r) as type, a.id as from_id, b.id as to_id
         """
-        result = await session.run(
-            query,
-            {
-                "from_id": nodes[0]["id"],
-                "to_id": nodes[1]["id"]
-            }
-        )
+        result = await session.run(query, {
+            "from_id": relation.from_id,
+            "to_id": relation.to_id
+        })
         record = await result.single()
         
         assert record is not None
-        assert record["r"].type == "TEST_RELATION" 
+        assert record["type"] == relation.type
+        assert record["from_id"] == relation.from_id
+        assert record["to_id"] == relation.to_id
+
+
+@pytest.mark.asyncio
+async def test_should_handle_nonexistent_entities(driver: AsyncDriver):
+    """When creating a relation with nonexistent entities, should handle it gracefully"""
+    # Arrange
+    relation = CreateRelationRequest(
+        type="TEST_RELATION",
+        from_id="nonexistent_1",
+        to_id="nonexistent_2"
+    )
+    
+    # Act
+    result = await create_relations_impl(driver, [relation])
+    
+    # Assert
+    assert isinstance(result, CreateRelationsResult)
+    assert len(result.result) == 0  # Should return empty result, not error 

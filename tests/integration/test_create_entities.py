@@ -4,7 +4,12 @@ from typing import AsyncGenerator
 import pytest
 from neo4j import AsyncDriver, AsyncGraphDatabase
 
-from src.tools.create_entities import create_entities_impl
+from src.tools.create_entities import (
+    create_entities_impl,
+    CreateEntityRequest,
+    Entity,
+    CreateEntitiesResult
+)
 
 
 @pytest.fixture
@@ -22,15 +27,15 @@ async def driver() -> AsyncGenerator[AsyncDriver, None]:
         await driver.close()
 
 
-def create_test_entity(name_prefix: str = "test") -> dict:
+def create_test_entity(name_prefix: str = "test") -> CreateEntityRequest:
     """Create a test entity with a unique ID to avoid conflicts"""
     unique_id = str(uuid.uuid4())
-    return {
-        "type": "TestEntity",
-        "properties": {
+    return CreateEntityRequest(
+        type="TestEntity",
+        properties={
             "name": f"{name_prefix}_{unique_id}"
         }
-    }
+    )
 
 
 @pytest.mark.asyncio
@@ -43,12 +48,13 @@ async def test_should_create_single_entity(driver: AsyncDriver):
     result = await create_entities_impl(driver, [entity])
 
     # Assert
-    assert "result" in result
-    assert len(result["result"]) == 1
-    created_node = result["result"][0]
-    assert created_node["id"] == entity["properties"]["name"]
-    assert created_node["type"] == entity["type"]
-    assert created_node["name"] == entity["properties"]["name"]
+    assert isinstance(result, CreateEntitiesResult)
+    assert len(result.result) == 1
+    created_node = result.result[0]
+    assert isinstance(created_node, Entity)
+    assert created_node.id == entity.properties["name"]
+    assert created_node.type == entity.type
+    assert created_node.properties["name"] == entity.properties["name"]
 
 
 @pytest.mark.asyncio
@@ -65,14 +71,15 @@ async def test_should_create_multiple_entities(driver: AsyncDriver):
     result = await create_entities_impl(driver, entities)
 
     # Assert
-    assert "result" in result
-    assert len(result["result"]) == 3
+    assert isinstance(result, CreateEntitiesResult)
+    assert len(result.result) == 3
     
     # Verify each entity was created correctly
-    for i, created_node in enumerate(result["result"]):
-        assert created_node["id"] == entities[i]["properties"]["name"]
-        assert created_node["type"] == entities[i]["type"]
-        assert created_node["name"] == entities[i]["properties"]["name"]
+    for i, created_node in enumerate(result.result):
+        assert isinstance(created_node, Entity)
+        assert created_node.id == entities[i].properties["name"]
+        assert created_node.type == entities[i].type
+        assert created_node.properties["name"] == entities[i].properties["name"]
 
 
 @pytest.mark.asyncio
@@ -80,15 +87,17 @@ async def test_should_create_entity_with_custom_type(driver: AsyncDriver):
     """When creating an entity with custom type, should preserve the type"""
     # Arrange
     entity = create_test_entity()
-    entity["type"] = "CustomType"
+    entity.type = "CustomType"
     
     # Act
     result = await create_entities_impl(driver, [entity])
     
     # Assert
-    assert "result" in result
-    created_node = result["result"][0]
-    assert created_node["type"] == "CustomType"
+    assert isinstance(result, CreateEntitiesResult)
+    created_node = result.result[0]
+    assert isinstance(created_node, Entity)
+    assert created_node.type == "CustomType"
+    assert created_node.properties["name"] == entity.properties["name"]
 
 
 @pytest.mark.asyncio
@@ -102,16 +111,20 @@ async def test_should_handle_duplicate_entity_creation(driver: AsyncDriver):
     result2 = await create_entities_impl(driver, [entity])
     
     # Assert - Both operations should succeed and return the same data
-    assert len(result1["result"]) == 1
-    assert len(result2["result"]) == 1
+    assert isinstance(result1, CreateEntitiesResult)
+    assert isinstance(result2, CreateEntitiesResult)
+    assert len(result1.result) == 1
+    assert len(result2.result) == 1
     
-    node1 = result1["result"][0]
-    node2 = result2["result"][0]
+    node1 = result1.result[0]
+    node2 = result2.result[0]
+    assert isinstance(node1, Entity)
+    assert isinstance(node2, Entity)
     
     # The nodes should have the same properties
-    assert node1["id"] == node2["id"]
-    assert node1["type"] == node2["type"]
-    assert node1["name"] == node2["name"]
+    assert node1.id == node2.id
+    assert node1.type == node2.type
+    assert node1.properties == node2.properties
 
 
 @pytest.mark.asyncio
@@ -121,41 +134,47 @@ async def test_should_persist_entity_in_database(driver: AsyncDriver):
     entity = create_test_entity()
     
     # Act
-    await create_entities_impl(driver, [entity])
+    result = await create_entities_impl(driver, [entity])
+    created_node = result.result[0]
     
     # Assert - Verify we can retrieve the entity
     async with driver.session() as session:
         query = """
         MATCH (n:Entity {id: $id})
-        RETURN n
+        RETURN {
+            id: n.id,
+            type: n.type,
+            properties: properties(n)
+        } as node
         """
-        result = await session.run(query, {"id": entity["properties"]["name"]})
+        result = await session.run(query, {"id": entity.properties["name"]})
         record = await result.single()
         
         assert record is not None
-        node = record["n"]
-        assert node["id"] == entity["properties"]["name"]
-        assert node["type"] == entity["type"]
-        assert node["name"] == entity["properties"]["name"]
+        node = record["node"]
+        assert node["id"] == entity.properties["name"]
+        assert node["type"] == entity.type
+        assert node["properties"]["name"] == entity.properties["name"]
 
 
 @pytest.mark.asyncio
 async def test_should_handle_empty_properties(driver: AsyncDriver):
     """When creating an entity with empty properties, should handle it gracefully"""
     # Arrange
-    entity = {
-        "type": "TestEntity",
-        "properties": {}
-    }
+    entity = CreateEntityRequest(
+        type="TestEntity",
+        properties={}
+    )
     
     # Act
     result = await create_entities_impl(driver, [entity])
     
     # Assert
-    assert "result" in result
-    assert len(result["result"]) == 1
-    created_node = result["result"][0]
-    assert created_node["type"] == "TestEntity"
+    assert isinstance(result, CreateEntitiesResult)
+    assert len(result.result) == 1
+    created_node = result.result[0]
+    assert isinstance(created_node, Entity)
+    assert created_node.type == "TestEntity"
     # ID and name should be None since properties were empty
-    assert created_node["id"] is None
-    assert created_node["name"] is None 
+    assert created_node.properties.get("id") is None
+    assert created_node.properties.get("name") is None 
