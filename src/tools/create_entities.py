@@ -74,22 +74,20 @@ async def create_entities_impl(driver: AsyncDriver, entities: List[CreateEntityR
     return CreateEntitiesResult(result=results)
 
 
-async def register(server: FastMCP) -> None:
+async def register(server: FastMCP, driver: AsyncDriver) -> None:
     """Register the create_entities tool with the MCP server."""
     
     @server.tool("mcp_neo4j_knowledge_graph_create_entities")
-    async def create_entities(entities: List[Dict], context: Dict = None) -> Dict:
+    async def create_entities(entities: List[Dict]) -> Dict:
         """Create multiple new entities in the knowledge graph
         
         Args:
             entities: List of entity dictionaries with type and properties fields
-            context: MCP context (unused)
             
         Returns:
             Dict containing the created entities with their properties
         """
-        if "driver" not in server.state:
-            raise ValueError("Neo4j driver not found in server state")
+     
             
         # Convert input dicts to CreateEntityRequest objects
         entity_requests = [
@@ -99,7 +97,7 @@ async def register(server: FastMCP) -> None:
             ) for e in entities
         ]
         
-        result = await create_entities_impl(server.state["driver"], entity_requests)
+        result = await create_entities_impl(driver, entity_requests)
         
         # Convert result back to dict format for MCP interface
         return {

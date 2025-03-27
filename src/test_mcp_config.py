@@ -76,6 +76,9 @@ async def test_server_connection(server_config: Dict) -> None:
                 "create_entities",
                 "introspect_schema",
                 "create_relations",
+                "search_entities",
+                "update_entities",
+                "delete_entities"
             ]
             for tool in expected_tools:
                 assert tool in tool_names, f"Expected tool {tool} not found"

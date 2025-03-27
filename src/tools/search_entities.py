@@ -126,10 +126,10 @@ async def search_entities_impl(driver: AsyncDriver, search_request: SearchEntity
     return SearchEntitiesResult(results=results)
 
 
-async def register(server: FastMCP) -> None:
+async def register(server: FastMCP, driver: AsyncDriver) -> None:
     """Register the search_entities tool with the MCP server."""
     
-    @server.tool("mcp_neo4j_knowledge_graph_search_entities")
+    @server.tool("search_entities")
     async def search_entities(
         search_term: str,
         entity_type: Optional[str] = None,
@@ -138,9 +138,7 @@ async def register(server: FastMCP) -> None:
         fuzzy_match: bool = True
     ) -> Dict[str, Any]:
         """Search for entities in the knowledge graph with fuzzy matching support"""
-        if "driver" not in server.state:
-            raise ValueError("Neo4j driver not found in server state")
-
+        
         search_request = SearchEntityRequest(
             search_term=search_term,
             entity_type=entity_type,
@@ -149,7 +147,7 @@ async def register(server: FastMCP) -> None:
             fuzzy_match=fuzzy_match
         )
         
-        result = await search_entities_impl(server.state["driver"], search_request)
+        result = await search_entities_impl(driver, search_request)
         
         # Convert result back to dict format for MCP interface
         return {

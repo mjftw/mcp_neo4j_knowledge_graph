@@ -189,10 +189,10 @@ async def _analyze_deletion_impact(
     }
 
 
-async def register(server: FastMCP) -> None:
+async def register(server: FastMCP, driver: AsyncDriver) -> None:
     """Register the delete_entities tool with the MCP server."""
     
-    @server.tool("mcp_neo4j_knowledge_graph_delete_entities")
+    @server.tool("delete_entities")
     async def delete_entities(
         entity_ids: List[str],
         cascade: bool = False,
@@ -216,7 +216,6 @@ async def register(server: FastMCP) -> None:
             - impacted_entities: Optional list of entities that would be affected (dry_run only)
             - impacted_relationships: Optional list of relationships that would be affected (dry_run only)
         """
-        driver = context["driver"]
         requests = [DeleteEntityRequest(id=id, cascade=cascade) for id in entity_ids]
         result = await delete_entities_impl(driver, requests, dry_run)
         return result.__dict__ 

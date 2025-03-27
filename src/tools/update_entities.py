@@ -123,10 +123,10 @@ async def update_entities_impl(
         )
 
 
-async def register(server: FastMCP) -> None:
+async def register(server: FastMCP, driver: AsyncDriver) -> None:
     """Register the update_entities tool with the MCP server."""
     
-    @server.tool("mcp_neo4j_knowledge_graph_update_entities")
+    @server.tool("update_entities")
     async def update_entities(
         updates: List[Dict],
         context: Dict = None
@@ -148,7 +148,6 @@ async def register(server: FastMCP) -> None:
             - updated_entities: List of entities after updates
             - errors: Optional list of error messages if any updates failed
         """
-        driver = context["driver"]
         requests = [UpdateEntityRequest(**update) for update in updates]
         result = await update_entities_impl(driver, requests)
         return result.__dict__ 

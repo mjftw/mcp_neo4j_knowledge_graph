@@ -105,6 +105,50 @@ async def main():
             except Exception as e:
                 print(f"Error searching entities: {e}")
 
+            # Test the update_entities tool
+            print("\nTesting update_entities tool...")
+            try:
+                update_result = await client.call_tool(
+                    "update_entities",
+                    {
+                        "updates": [
+                            {
+                                "id": "John Doe",  # Assuming this entity exists
+                                "properties": {
+                                    "occupation": "Senior Developer",
+                                    "years_experience": 5
+                                },
+                                "add_labels": ["Employee"]
+                            }
+                        ]
+                    }
+                )
+                print("Update results:")
+                if update_result.content:
+                    print(update_result.content[0].text)
+                else:
+                    print("No updates performed")
+            except Exception as e:
+                print(f"Error updating entities: {e}")
+
+            # Test the delete_entities tool
+            print("\nTesting delete_entities tool...")
+            try:
+                delete_result = await client.call_tool(
+                    "delete_entities",
+                    {
+                        "entity_ids": ["John Doe"],  # Assuming this entity exists
+                        "cascade": True
+                    }
+                )
+                print("Delete results:")
+                if delete_result.content:
+                    print(delete_result.content[0].text)
+                else:
+                    print("No deletions performed")
+            except Exception as e:
+                print(f"Error deleting entities: {e}")
+
             print("\nTest completed successfully!")
 
             # Clean up

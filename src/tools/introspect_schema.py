@@ -1,41 +1,15 @@
-from dataclasses import dataclass
-from typing import Dict, List, Optional
-
+from typing import Dict
 from neo4j import AsyncDriver
-from mcp.server.fastmcp import FastMCP
+from fastmcp import FastMCP
 
-
-@dataclass
-class SchemaLabel:
-    """Represents a node label in the Neo4j schema"""
-    name: str
-    properties: List[str]
-
-
-@dataclass
-class SchemaRelationType:
-    """Represents a relationship type in the Neo4j schema"""
-    type: str
-    properties: List[str]
-
-
-@dataclass
-class SchemaIntrospectionResult:
-    """Result of schema introspection containing labels and relationship types"""
-    node_labels: List[str]
-    relationship_types: List[str]
-    node_properties: Dict[str, List[str]]
-    relationship_properties: Dict[str, List[str]]
-
-
-async def introspect_schema_impl(driver: AsyncDriver) -> SchemaIntrospectionResult:
+async def introspect_schema_impl(driver: AsyncDriver) -> Dict:
     """Introspect the Neo4j database schema to get information about node labels and relationship types
     
     Args:
         driver: Neo4j async driver instance
         
     Returns:
-        SchemaIntrospectionResult containing schema information including node labels, relationship types,
+        Dict containing schema information including node labels, relationship types,
         and their respective properties
     """
     schema_info = {
@@ -84,33 +58,19 @@ async def introspect_schema_impl(driver: AsyncDriver) -> SchemaIntrospectionResu
             props_result = await session.run(props_query)
             record = await props_result.single()
             if record:
-                schema_info["relationship_properties"][rel_type] = record["properties"]
+                schema_info["relationship_properties"][rel_type] = record[
+                    "properties"
+                ]
 
-    return SchemaIntrospectionResult(
-        node_labels=schema_info["node_labels"],
-        relationship_types=schema_info["relationship_types"],
-        node_properties=schema_info["node_properties"],
-        relationship_properties=schema_info["relationship_properties"]
+    return {"schema": schema_info}
+
+
+async def register(mcp: FastMCP, driver: AsyncDriver):
+    @mcp.tool(
+        name="introspect_schema",
+        description="Introspect the Neo4j database schema to get information about node labels and relationship types"
     )
-
-
-async def register(server: FastMCP) -> None:
-    """Register the introspect_schema tool with the MCP server."""
-    
-    @server.tool("mcp_neo4j_knowledge_graph_introspect_schema")
-    async def introspect_schema(random_string: str) -> Dict:
+    async def introspect_schema() -> Dict:
         """Introspect the Neo4j database schema to get information about node labels and relationship types"""
-        if "driver" not in server.state:
-            raise ValueError("Neo4j driver not found in server state")
 
-        result = await introspect_schema_impl(server.state["driver"])
-        
-        # Convert result back to dict format for MCP interface
-        return {
-            "schema": {
-                "node_labels": result.node_labels,
-                "relationship_types": result.relationship_types,
-                "node_properties": result.node_properties,
-                "relationship_properties": result.relationship_properties
-            }
-        } 
+        return await introspect_schema_impl(driver) 
