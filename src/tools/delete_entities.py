@@ -6,27 +6,27 @@ from mcp.server.fastmcp import FastMCP
 
 
 @dataclass
-class Entity:
+class DeleteEntityRequest:
     id: str
-    type: str
-    properties: Dict[str, any]
+    cascade: bool = False
 
 
 @dataclass
-class Relationship:
-    type: str
-    from_id: str
-    to_id: str
-    properties: Optional[Dict[str, any]] = None
+class Entity:
+    id: str
+    type: List[str]  # Updated to match the actual type from Neo4j
+    properties: Dict[str, any]
+    relationships: Optional[List[Dict]] = None
 
 
 @dataclass
 class DeletionResult:
+    success: bool
     deleted_entities: List[Entity]
-    deleted_relations: List[Relationship]
-    stats: Dict[str, int]
-    error: Optional[str] = None
-    orphaned_relations: Optional[List[Relationship]] = None
+    deleted_relationships: List[Dict]
+    errors: List[str] = None
+    impacted_entities: List[Entity] = None
+    impacted_relationships: List[Dict] = None
 
 
 def _neo4j_to_entity(neo4j_entity: Dict) -> Entity:
@@ -41,63 +41,55 @@ def _neo4j_to_entity(neo4j_entity: Dict) -> Entity:
     
     return Entity(
         id=neo4j_entity["id"],
-        type=neo4j_entity["type"][0] if isinstance(neo4j_entity["type"], list) else neo4j_entity["type"],
+        type=neo4j_entity["type"] if isinstance(neo4j_entity["type"], list) else [neo4j_entity["type"]],
         properties=properties
-    )
-
-
-def _neo4j_to_relationship(neo4j_rel: Dict) -> Relationship:
-    """Convert Neo4j relationship format to our Relationship dataclass"""
-    return Relationship(
-        type=neo4j_rel["type"],
-        from_id=neo4j_rel["from"],
-        to_id=neo4j_rel["to"],
-        properties=neo4j_rel.get("properties")
     )
 
 
 async def delete_entities_impl(
     driver: AsyncDriver,
-    entity_ids: List[str],
-    cascade: bool = False,
+    requests: List[DeleteEntityRequest],
     dry_run: bool = False
 ) -> DeletionResult:
     """Delete entities from the graph with optional cascade deletion of relationships.
     
     Args:
         driver: Neo4j async driver instance
-        entity_ids: List of entity IDs to delete
-        cascade: If True, delete all relationships connected to these entities
+        requests: List of DeleteEntityRequest objects specifying what to delete
         dry_run: If True, only return what would be deleted without making changes
     
     Returns:
         DeletionResult containing:
-        - deleted_entities: List of entities that were/would be deleted
-        - deleted_relations: List of relationships that were/would be deleted
-        - stats: Counts of deleted entities and relationships
-        - error: Optional error message if deletion was prevented
-        - orphaned_relations: Optional list of relationships that would be orphaned
+        - success: Whether the operation was successful
+        - deleted_entities: List of entities that were deleted
+        - deleted_relationships: List of relationships that were deleted
+        - errors: Optional list of error messages if deletion was prevented
+        - impacted_entities: Optional list of entities that would be affected (dry_run only)
+        - impacted_relationships: Optional list of relationships that would be affected (dry_run only)
     """
+    entity_ids = [r.id for r in requests]
+    cascade = any(r.cascade for r in requests)
+
     async with driver.session() as session:
         # First get all affected entities and relationships
         impact = await _analyze_deletion_impact(session, entity_ids)
         
         if dry_run:
             return DeletionResult(
-                deleted_entities=[_neo4j_to_entity(e) for e in impact["entities"]],
-                deleted_relations=[_neo4j_to_relationship(r) for r in impact["relations"]],
-                stats={"entities_deleted": 0, "relations_deleted": 0},
-                orphaned_relations=[_neo4j_to_relationship(r) for r in impact["orphaned_relations"]]
+                success=True,
+                deleted_entities=[],
+                deleted_relationships=[],
+                impacted_entities=[_neo4j_to_entity(e) for e in impact["entities"]],
+                impacted_relationships=impact["relations"]
             )
             
         # If not cascading, check for orphaned relationships
         if not cascade and impact["orphaned_relations"]:
             return DeletionResult(
+                success=False,
                 deleted_entities=[],
-                deleted_relations=[],
-                stats={"entities_deleted": 0, "relations_deleted": 0},
-                error="Cannot delete entities as it would create orphaned relationships. Use cascade=True to delete relationships as well.",
-                orphaned_relations=[_neo4j_to_relationship(r) for r in impact["orphaned_relations"]]
+                deleted_relationships=[],
+                errors=["Cannot delete entities as it would create orphaned relationships. Use cascade=True to delete relationships as well."]
             )
             
         # Perform the deletion
@@ -124,17 +116,19 @@ async def delete_entities_impl(
         result = await session.run(query, {"entity_ids": entity_ids})
         stats = await result.single()
         
-        # Handle case where no entities were found/deleted
-        if stats is None:
-            stats = {"deleted_entities": 0, "deleted_relations": 0}
+        # Handle case where no entities were found
+        if stats is None or stats["deleted_entities"] == 0:
+            return DeletionResult(
+                success=False,
+                deleted_entities=[],
+                deleted_relationships=[],
+                errors=["Entity not found"]
+            )
             
         return DeletionResult(
+            success=True,
             deleted_entities=[_neo4j_to_entity(e) for e in impact["entities"]],
-            deleted_relations=[_neo4j_to_relationship(r) for r in impact["relations"]] if cascade else [],
-            stats={
-                "entities_deleted": stats["deleted_entities"],
-                "relations_deleted": stats["deleted_relations"]
-            }
+            deleted_relationships=impact["relations"] if cascade else []
         )
 
 
@@ -210,18 +204,19 @@ async def register(server: FastMCP) -> None:
         Args:
             entity_ids: List of entity IDs to delete
             cascade: If True, delete all relationships connected to these entities
-            dry_run: If True, only preview what would be deleted without making changes
-            context: MCP context (unused)
+            dry_run: If True, only return what would be deleted without making changes
+            context: Optional context with Neo4j driver instance
             
         Returns:
             Dict containing:
-            - deleted_entities: List of entities that were/would be deleted
-            - deleted_relations: List of relationships that were/would be deleted
-            - orphaned_relations: List of relationships that would be orphaned (if cascade=False)
-            - stats: Counts of deleted entities and relationships
+            - success: Whether the operation was successful
+            - deleted_entities: List of entities that were deleted
+            - deleted_relationships: List of relationships that were deleted
+            - errors: Optional list of error messages if deletion was prevented
+            - impacted_entities: Optional list of entities that would be affected (dry_run only)
+            - impacted_relationships: Optional list of relationships that would be affected (dry_run only)
         """
-        driver = server.get_tool("neo4j_driver")
-        if not driver:
-            return {"error": "Neo4j driver not found"}
-            
-        return await delete_entities_impl(driver, entity_ids, cascade, dry_run) 
+        driver = context["driver"]
+        requests = [DeleteEntityRequest(id=id, cascade=cascade) for id in entity_ids]
+        result = await delete_entities_impl(driver, requests, dry_run)
+        return result.__dict__ 
