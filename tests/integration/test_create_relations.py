@@ -43,8 +43,8 @@ async def create_test_entities(
 
 
 @pytest.mark.asyncio
-async def test_create_single_relation(driver: AsyncDriver):
-    """Test creating a single relation between two entities"""
+async def test_should_create_single_relation(driver: AsyncDriver):
+    """When creating a relation between two entities, should create it with correct type"""
     # Arrange
     nodes = await create_test_entities(driver, 2)
     relation = {
@@ -66,8 +66,8 @@ async def test_create_single_relation(driver: AsyncDriver):
 
 
 @pytest.mark.asyncio
-async def test_create_multiple_relations(driver: AsyncDriver):
-    """Test creating multiple relations between entities"""
+async def test_should_create_multiple_relations(driver: AsyncDriver):
+    """When creating multiple relations, should create all with correct types and directions"""
     # Arrange
     nodes = await create_test_entities(driver, 3)
     relations = [
@@ -95,8 +95,8 @@ async def test_create_multiple_relations(driver: AsyncDriver):
 
 
 @pytest.mark.asyncio
-async def test_create_bidirectional_relations(driver: AsyncDriver):
-    """Test creating relations in both directions between the same entities"""
+async def test_should_create_bidirectional_relations(driver: AsyncDriver):
+    """When creating relations in both directions, should create both relations correctly"""
     # Arrange
     nodes = await create_test_entities(driver, 2)
     relations = [
@@ -124,8 +124,8 @@ async def test_create_bidirectional_relations(driver: AsyncDriver):
 
 
 @pytest.mark.asyncio
-async def test_create_relation_with_nonexistent_entity(driver: AsyncDriver):
-    """Test creating a relation with a non-existent entity should fail gracefully"""
+async def test_should_handle_nonexistent_entity_gracefully(driver: AsyncDriver):
+    """When creating relation with nonexistent entity, should return empty result"""
     # Arrange
     nodes = await create_test_entities(driver, 1)
     relation = {
@@ -143,8 +143,8 @@ async def test_create_relation_with_nonexistent_entity(driver: AsyncDriver):
 
 
 @pytest.mark.asyncio
-async def test_create_self_relation(driver: AsyncDriver):
-    """Test creating a relation from an entity to itself"""
+async def test_should_create_self_relation(driver: AsyncDriver):
+    """When creating relation from entity to itself, should create self-referential relation"""
     # Arrange
     nodes = await create_test_entities(driver, 1)
     relation = {
@@ -165,8 +165,8 @@ async def test_create_self_relation(driver: AsyncDriver):
 
 
 @pytest.mark.asyncio
-async def test_verify_relation_in_database(driver: AsyncDriver):
-    """Test that created relations can be retrieved from the database"""
+async def test_should_persist_relation_in_database(driver: AsyncDriver):
+    """When creating a relation, should be able to retrieve it from the database"""
     # Arrange
     nodes = await create_test_entities(driver, 2)
     relation = {

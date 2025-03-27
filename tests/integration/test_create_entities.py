@@ -34,14 +34,14 @@ def create_test_entity(name_prefix: str = "test") -> dict:
 
 
 @pytest.mark.asyncio
-async def test_create_single_entity(driver: AsyncDriver):
-    """Test creating a single entity"""
+async def test_should_create_single_entity(driver: AsyncDriver):
+    """When creating a single entity, should create it with all properties"""
     # Arrange
     entity = create_test_entity()
-    
+
     # Act
     result = await create_entities_impl(driver, [entity])
-    
+
     # Assert
     assert "result" in result
     assert len(result["result"]) == 1
@@ -52,18 +52,18 @@ async def test_create_single_entity(driver: AsyncDriver):
 
 
 @pytest.mark.asyncio
-async def test_create_multiple_entities(driver: AsyncDriver):
-    """Test creating multiple entities in a single call"""
+async def test_should_create_multiple_entities(driver: AsyncDriver):
+    """When creating multiple entities, should create all with their respective properties"""
     # Arrange
     entities = [
         create_test_entity("test1"),
         create_test_entity("test2"),
         create_test_entity("test3")
     ]
-    
+
     # Act
     result = await create_entities_impl(driver, entities)
-    
+
     # Assert
     assert "result" in result
     assert len(result["result"]) == 3
@@ -76,8 +76,8 @@ async def test_create_multiple_entities(driver: AsyncDriver):
 
 
 @pytest.mark.asyncio
-async def test_create_entity_with_custom_type(driver: AsyncDriver):
-    """Test creating an entity with a custom type"""
+async def test_should_create_entity_with_custom_type(driver: AsyncDriver):
+    """When creating an entity with custom type, should preserve the type"""
     # Arrange
     entity = create_test_entity()
     entity["type"] = "CustomType"
@@ -92,8 +92,8 @@ async def test_create_entity_with_custom_type(driver: AsyncDriver):
 
 
 @pytest.mark.asyncio
-async def test_create_entities_idempotency(driver: AsyncDriver):
-    """Test that creating the same entity twice doesn't cause errors"""
+async def test_should_handle_duplicate_entity_creation(driver: AsyncDriver):
+    """When creating the same entity twice, should handle it idempotently"""
     # Arrange
     entity = create_test_entity()
     
@@ -115,8 +115,8 @@ async def test_create_entities_idempotency(driver: AsyncDriver):
 
 
 @pytest.mark.asyncio
-async def test_verify_entity_in_database(driver: AsyncDriver):
-    """Test that created entity can be retrieved from the database"""
+async def test_should_persist_entity_in_database(driver: AsyncDriver):
+    """When creating an entity, should be able to retrieve it from the database"""
     # Arrange
     entity = create_test_entity()
     
@@ -140,8 +140,8 @@ async def test_verify_entity_in_database(driver: AsyncDriver):
 
 
 @pytest.mark.asyncio
-async def test_create_entity_with_empty_properties(driver: AsyncDriver):
-    """Test creating an entity with empty properties"""
+async def test_should_handle_empty_properties(driver: AsyncDriver):
+    """When creating an entity with empty properties, should handle it gracefully"""
     # Arrange
     entity = {
         "type": "TestEntity",
