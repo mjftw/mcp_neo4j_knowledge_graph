@@ -33,7 +33,10 @@ async def lifespan(mcp: FastMCP):
 def create_server():
     mcp = FastMCP(lifespan=lifespan)
 
-    @mcp.tool()
+    @mcp.tool(
+        name="create_entities",
+        description="Create multiple new entities in the knowledge graph"
+    )
     async def create_entities(entities: List[Dict], context: Dict) -> Dict:
         """Create multiple new entities in the knowledge graph"""
         if "driver" not in mcp.state:
@@ -68,7 +71,10 @@ def create_server():
 
         return {"result": results}
 
-    @mcp.tool()
+    @mcp.tool(
+        name="introspect_schema",
+        description="Introspect the Neo4j database schema to get information about node labels and relationship types"
+    )
     async def introspect_schema() -> Dict:
         """Introspect the Neo4j database schema to get information about node labels and relationship types"""
         if "driver" not in mcp.state:
@@ -125,7 +131,10 @@ def create_server():
 
         return {"schema": schema_info}
 
-    @mcp.tool()
+    @mcp.tool(
+        name="create_relations",
+        description="Create multiple new relations between entities"
+    )
     async def create_relations(relations: List[Dict]) -> Dict:
         """Create multiple new relations between entities"""
         if "driver" not in mcp.state:
@@ -160,7 +169,10 @@ def create_server():
 
         return {"result": results}
 
-    @mcp.tool()
+    @mcp.tool(
+        name="search_entities",
+        description="Search for entities in the knowledge graph with fuzzy matching support"
+    )
     async def search_entities(
         search_term: str,
         entity_type: str = None,
