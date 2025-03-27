@@ -95,11 +95,11 @@ async def create_test_dataset(driver: AsyncDriver, test_id: str) -> Dict[str, Li
 
 
 @pytest.mark.asyncio
-async def test_search_by_exact_name(driver: AsyncDriver):
-    """Test searching entities by exact name match"""
+async def test_should_find_entity_by_exact_name_match(driver: AsyncDriver):
+    """When searching with exact name match, should return only the matching entity"""
     # Arrange
     test_id = str(uuid.uuid4())
-    data = await create_test_dataset(driver, test_id)
+    await create_test_dataset(driver, test_id)
     
     # Act
     result = await search_entities_impl(
@@ -114,11 +114,11 @@ async def test_search_by_exact_name(driver: AsyncDriver):
 
 
 @pytest.mark.asyncio
-async def test_search_by_fuzzy_name(driver: AsyncDriver):
-    """Test searching entities with fuzzy name matching"""
+async def test_should_find_multiple_entities_with_fuzzy_name_match(driver: AsyncDriver):
+    """When searching with fuzzy name match, should return all partially matching entities"""
     # Arrange
     test_id = str(uuid.uuid4())
-    data = await create_test_dataset(driver, test_id)
+    await create_test_dataset(driver, test_id)
     
     # Act
     result = await search_entities_impl(
@@ -135,16 +135,16 @@ async def test_search_by_fuzzy_name(driver: AsyncDriver):
 
 
 @pytest.mark.asyncio
-async def test_search_by_entity_type(driver: AsyncDriver):
-    """Test searching entities by type"""
+async def test_should_filter_entities_by_type(driver: AsyncDriver):
+    """When filtering by entity type, should return only entities of that type"""
     # Arrange
     test_id = str(uuid.uuid4())
-    data = await create_test_dataset(driver, test_id)
+    await create_test_dataset(driver, test_id)
     
     # Act
     result = await search_entities_impl(
         driver,
-        search_term=test_id,  # Use test_id to find only our test data
+        search_term=test_id,
         entity_type="Person",
         fuzzy_match=True
     )
@@ -152,15 +152,15 @@ async def test_search_by_entity_type(driver: AsyncDriver):
     # Assert
     assert len(result["results"]) == 2
     for node in result["results"]:
-        assert "Person" in node["type"]  # type is now an array of labels
+        assert "Person" in node["type"]
 
 
 @pytest.mark.asyncio
-async def test_search_with_property_filter(driver: AsyncDriver):
-    """Test searching entities with specific property filter"""
+async def test_should_find_entity_by_property_value(driver: AsyncDriver):
+    """When searching by specific property value, should return matching entity"""
     # Arrange
     test_id = str(uuid.uuid4())
-    data = await create_test_dataset(driver, test_id)
+    await create_test_dataset(driver, test_id)
     
     # Act
     result = await search_entities_impl(
@@ -175,11 +175,11 @@ async def test_search_with_property_filter(driver: AsyncDriver):
 
 
 @pytest.mark.asyncio
-async def test_search_with_relationships(driver: AsyncDriver):
-    """Test searching entities and including their relationships"""
+async def test_should_include_relationships_when_requested(driver: AsyncDriver):
+    """When relationships are included, should return entity with its relationships"""
     # Arrange
     test_id = str(uuid.uuid4())
-    data = await create_test_dataset(driver, test_id)
+    await create_test_dataset(driver, test_id)
     
     # Act
     result = await search_entities_impl(
@@ -193,7 +193,6 @@ async def test_search_with_relationships(driver: AsyncDriver):
     node = result["results"][0]
     assert "relationships" in node
     
-    # Should have two relationships: WORKS_AT and MANAGES
     relationships = node["relationships"]
     rel_types = [rel["type"] for rel in relationships]
     assert "WORKS_AT" in rel_types
@@ -201,11 +200,11 @@ async def test_search_with_relationships(driver: AsyncDriver):
 
 
 @pytest.mark.asyncio
-async def test_search_no_results(driver: AsyncDriver):
-    """Test searching with a term that should return no results"""
+async def test_should_return_empty_results_for_nonexistent_entity(driver: AsyncDriver):
+    """When searching for nonexistent entity, should return empty results"""
     # Arrange
     test_id = str(uuid.uuid4())
-    data = await create_test_dataset(driver, test_id)
+    await create_test_dataset(driver, test_id)
     
     # Act
     result = await search_entities_impl(
@@ -218,11 +217,11 @@ async def test_search_no_results(driver: AsyncDriver):
 
 
 @pytest.mark.asyncio
-async def test_search_case_insensitive(driver: AsyncDriver):
-    """Test case-insensitive search"""
+async def test_should_match_case_insensitively(driver: AsyncDriver):
+    """When searching with different case, should match case-insensitively"""
     # Arrange
     test_id = str(uuid.uuid4())
-    data = await create_test_dataset(driver, test_id)
+    await create_test_dataset(driver, test_id)
     
     # Act
     result = await search_entities_impl(
@@ -237,34 +236,44 @@ async def test_search_case_insensitive(driver: AsyncDriver):
 
 
 @pytest.mark.asyncio
-async def test_search_multiple_properties(driver: AsyncDriver):
-    """Test searching across multiple specified properties"""
+async def test_should_find_entity_by_exact_name(driver: AsyncDriver):
+    """When searching for entity by exact name, should return matching entity with properties"""
     # Arrange
     test_id = str(uuid.uuid4())
-    data = await create_test_dataset(driver, test_id)
+    await create_test_dataset(driver, test_id)
 
-    # Search by name with test_id to ensure we only get our test data
+    # Act
     result = await search_entities_impl(
         driver,
-        search_term=f"Tech Corp_{test_id}",  # Search for exact entity name
+        search_term=f"Tech Corp_{test_id}",
         properties=["name"],
-        fuzzy_match=False  # Use exact match for first search
+        fuzzy_match=False
     )
 
+    # Assert
     assert len(result["results"]) == 1, f"Expected 1 result, got {len(result['results'])}"
     node = result["results"][0]
     assert node["properties"]["name"] == f"Tech Corp_{test_id}"
     assert node["properties"]["industry"] == "Technology"
 
-    # Search by name and industry with test_id to ensure we only get our test data
+
+@pytest.mark.asyncio
+async def test_should_find_entity_by_type_and_property(driver: AsyncDriver):
+    """When searching with type and property filters, should return only matching entity"""
+    # Arrange
+    test_id = str(uuid.uuid4())
+    await create_test_dataset(driver, test_id)
+
+    # Act
     results = await search_entities_impl(
         driver,
-        search_term=test_id,  # Search for test_id to get our specific entity
+        search_term=test_id,
         entity_type="Company",
-        properties=["name"],  # Just search in name to find our test entity
+        properties=["name"],
         fuzzy_match=True
     )
 
+    # Assert
     assert len(results["results"]) == 1, f"Expected 1 result, got {len(results['results'])}"
     assert results["results"][0]["properties"]["name"] == f"Tech Corp_{test_id}"
     assert results["results"][0]["properties"]["industry"] == "Technology" 
