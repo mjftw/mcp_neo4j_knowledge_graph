@@ -20,10 +20,13 @@ tasks:
       - poetry run python src/server.py
 
   test:
-    desc: Run the MCP client test
+    desc: Run all tests (pytest, integration tests, and individual test scripts)
     deps: [docker]
     cmds:
-      - poetry run python src/test_mcp_client.py
+      - task: test-integration
+      - task: test-db
+      - task: test-config
+      - task: test-client
 
   test-config:
     desc: Test the MCP configuration file
@@ -31,20 +34,23 @@ tasks:
     cmds:
       - poetry run python src/test_mcp_config.py
 
+  test-client:
+    desc: Run the MCP client test
+    deps: [docker]
+    cmds:
+      - poetry run python src/test_mcp_client.py
+
   test-db:
     desc: Test the Neo4j database connection
     deps: [docker]
     cmds:
       - poetry run python src/test_neo4j_connection.py
 
-  test-all:
-    desc: Run all tests (pytest and individual test scripts)
+  test-integration:
+    desc: Run integration tests
     deps: [docker]
     cmds:
-      - poetry run pytest
-      - task: test-config
-      - task: test
-      - task: test-db
+      - poetry run pytest tests/integration/
 
   run:
     desc: Start both Docker services and the MCP stdio server
