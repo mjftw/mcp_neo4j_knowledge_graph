@@ -47,37 +47,36 @@
           },
           {
             "name": "search_entities",
-            "description": "Search for entities in the knowledge graph with fuzzy matching support",
+            "description": "Search for entities in the knowledge graph with powerful text matching and filtering. Can be used to search by text, list entities by type, find entities with specific properties, or any combination of these filters.",
             "parameters": {
               "type": "object",
               "properties": {
                 "search_term": {
                   "type": "string",
-                  "description": "The text to search for"
+                  "description": "Optional text to search for in entity properties. If not provided, returns entities based on other filters."
                 },
                 "entity_type": {
                   "type": "string",
-                  "description": "Optional entity type to filter by"
+                  "description": "Optional entity type to filter by (e.g., Person, Organization). If provided alone, returns all entities of that type."
                 },
                 "properties": {
                   "type": "array",
                   "items": {
                     "type": "string"
                   },
-                  "description": "Optional list of property names to search in"
+                  "description": "Optional list of property names to filter by. If search_term is provided, searches these properties for the term. If search_term is not provided, returns entities that have any of these properties defined."
                 },
                 "include_relationships": {
                   "type": "boolean",
-                  "description": "Whether to include relationships in results"
+                  "description": "Whether to include connected entities and relationships in results",
+                  "default": false
                 },
                 "fuzzy_match": {
                   "type": "boolean",
-                  "description": "Whether to use fuzzy matching for text properties"
+                  "description": "Whether to use case-insensitive partial matching when search_term is provided",
+                  "default": true
                 }
-              },
-              "required": [
-                "search_term"
-              ]
+              }
             }
           },
           {

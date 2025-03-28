@@ -289,4 +289,127 @@ async def test_should_find_entity_by_type_and_property(driver: AsyncDriver):
     # Assert
     assert len(results.results) == 1
     assert "Company" in results.results[0].type
-    assert test_id in results.results[0].properties["name"] 
+    assert test_id in results.results[0].properties["name"]
+
+
+@pytest.mark.asyncio
+async def test_should_find_all_entities_of_type_without_search_term(driver: AsyncDriver):
+    """When only entity type is provided, should return all entities of that type"""
+    # Arrange
+    test_id = str(uuid.uuid4())
+    dataset = await create_test_dataset(driver, test_id)
+    
+    # Act
+    result = await search_entities_impl(
+        driver,
+        SearchEntityRequest(
+            entity_type="Person",
+            search_term=test_id,
+            fuzzy_match=True
+        )
+    )
+    
+    # Assert
+    assert len(result.results) == 2
+    assert all("Person" in entity.type for entity in result.results)
+    assert any(f"John Smith_{test_id}" in entity.properties["name"] for entity in result.results)
+    assert any(f"Jane Smith_{test_id}" in entity.properties["name"] for entity in result.results)
+
+
+@pytest.mark.asyncio
+async def test_should_find_entities_with_property_without_search_term(driver: AsyncDriver):
+    """When only property names are provided, should return entities having those properties"""
+    # Arrange
+    test_id = str(uuid.uuid4())
+    dataset = await create_test_dataset(driver, test_id)
+    
+    # Act
+    result = await search_entities_impl(
+        driver,
+        SearchEntityRequest(
+            properties=["email"],
+            search_term=test_id,
+            fuzzy_match=True
+        )
+    )
+    
+    # Assert
+    assert len(result.results) == 2  # Both Person entities have email
+    assert all("email" in entity.properties for entity in result.results)
+    assert any(f"john_{test_id}@example.com" in entity.properties["email"] for entity in result.results)
+    assert any(f"jane_{test_id}@example.com" in entity.properties["email"] for entity in result.results)
+
+
+@pytest.mark.asyncio
+async def test_should_find_entities_by_type_and_property_without_search_term(driver: AsyncDriver):
+    """When entity type and property names are provided without search term, should filter accordingly"""
+    # Arrange
+    test_id = str(uuid.uuid4())
+    dataset = await create_test_dataset(driver, test_id)
+    
+    # Act
+    result = await search_entities_impl(
+        driver,
+        SearchEntityRequest(
+            entity_type="Company",
+            properties=["name"],
+            search_term=test_id,
+            fuzzy_match=True
+        )
+    )
+    
+    # Assert
+    assert len(result.results) == 1
+    assert "Company" in result.results[0].type
+    assert "name" in result.results[0].properties
+    assert test_id in result.results[0].properties["name"]
+
+
+@pytest.mark.asyncio
+async def test_should_return_all_entities_without_filters(driver: AsyncDriver):
+    """When no search term, type, or properties are provided, should return all entities"""
+    # Arrange
+    test_id = str(uuid.uuid4())
+    dataset = await create_test_dataset(driver, test_id)
+    
+    # Act
+    result = await search_entities_impl(
+        driver,
+        SearchEntityRequest()
+    )
+    
+    # Assert
+    # Should find at least our 4 test entities (there might be others in the DB)
+    test_entities = [entity for entity in result.results 
+                    if any(test_id in str(value) 
+                          for value in entity.properties.values() 
+                          if isinstance(value, str))]
+    assert len(test_entities) == 4
+    assert any("Person" in entity.type and f"John Smith_{test_id}" in entity.properties["name"] 
+              for entity in test_entities)
+    assert any("Company" in entity.type and f"Tech Corp_{test_id}" in entity.properties["name"] 
+              for entity in test_entities)
+
+
+@pytest.mark.asyncio
+async def test_should_combine_type_and_property_filters(driver: AsyncDriver):
+    """When combining entity type and property filters with search term, should apply all filters"""
+    # Arrange
+    test_id = str(uuid.uuid4())
+    dataset = await create_test_dataset(driver, test_id)
+    
+    # Act
+    result = await search_entities_impl(
+        driver,
+        SearchEntityRequest(
+            search_term=test_id,
+            entity_type="Person",
+            properties=["email"]
+        )
+    )
+    
+    # Assert
+    assert len(result.results) == 2
+    assert all("Person" in entity.type for entity in result.results)
+    assert all("email" in entity.properties for entity in result.results)
+    assert all(test_id in entity.properties["email"] for entity in result.results) 

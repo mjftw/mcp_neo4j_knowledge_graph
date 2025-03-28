@@ -152,25 +152,81 @@ Example input:
 ```
 
 ### 3. Search Entities
-Searches for entities in the knowledge graph with powerful fuzzy matching support and filtering capabilities.
+Searches for entities in the knowledge graph with powerful text matching and filtering capabilities. Can be used to search by text, list entities by type, find entities with specific properties, or any combination of these filters.
 
 Parameters:
-- `search_term`: String (required) - The text to search for
-- `entity_type`: String (optional) - Filter results by entity type
-- `properties`: List[String] (optional) - List of property names to search in
-- `include_relationships`: Boolean (optional, default: false) - Whether to include related entities
-- `fuzzy_match`: Boolean (optional, default: true) - Enable fuzzy text matching
+- `search_term`: String (optional) - Text to search for in entity properties. If not provided, returns entities based on other filters.
+- `entity_type`: String (optional) - Filter results by entity type (e.g., Person, Organization). If provided alone, returns all entities of that type.
+- `properties`: List[String] (optional) - List of property names to filter by:
+  - With search_term: Searches these properties for the term
+  - Without search_term: Returns entities that have any of these properties defined
+- `include_relationships`: Boolean (optional, default: false) - Whether to include connected entities and relationships
+- `fuzzy_match`: Boolean (optional, default: true) - Whether to use case-insensitive partial matching when search_term is provided
 
-Example input:
+Example inputs:
 ```json
+// Search by text with type filter
 {
     "search_term": "John",
     "entity_type": "Person",
     "properties": ["name", "occupation"],
-    "include_relationships": true,
+    "include_relationships": true
+}
+
+// List all entities of a type
+{
+    "entity_type": "Person"
+}
+
+// Find entities with specific properties
+{
+    "properties": ["email", "phone"],
+    "entity_type": "Contact"
+}
+
+// Combine filters
+{
+    "entity_type": "Person",
+    "properties": ["email"],
+    "search_term": "example.com",
     "fuzzy_match": true
 }
 ```
+
+Returns:
+```json
+{
+    "results": [
+        {
+            "id": "john_doe",
+            "type": ["Entity", "Person"],
+            "properties": {
+                "name": "John Doe",
+                "email": "john@example.com"
+            },
+            "relationships": [  // Only included if include_relationships is true
+                {
+                    "type": "WORKS_AT",
+                    "direction": "outgoing",
+                    "node": {
+                        "id": "tech_corp",
+                        "type": "Company",
+                        "properties": {
+                            "name": "Tech Corp"
+                        }
+                    }
+                }
+            ]
+        }
+    ]
+}
+```
+
+Notes:
+- When no filters are provided, returns all entities
+- Entity type filtering is exact match (not fuzzy)
+- Property existence check is done with `IS NOT NULL`
+- Text search supports case-insensitive partial matching when fuzzy_match is true
 
 ### 4. Update Entities
 Updates existing entities in the knowledge graph. Supports adding/removing properties and labels.
