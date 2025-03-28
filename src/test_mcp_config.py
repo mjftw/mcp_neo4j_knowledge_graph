@@ -24,11 +24,11 @@ async def main():
             config_data = json.load(f)
 
         print(
-            f"Successfully loaded MCP configuration with {len(config_data['mcp_servers'])} servers"
+            f"Successfully loaded MCP configuration with {len(config_data['mcpServers'])} servers"
         )
 
         # Test each server
-        for server in config_data["mcp_servers"]:
+        for server in config_data["mcpServers"]:
             print(f"\nTesting server: {server['name']}")
             try:
                 await test_server_connection(server)
@@ -54,7 +54,7 @@ def server_config():
     config_path = Path(__file__).parent.parent / "example_mcp_config.json"
     with open(config_path, "r") as f:
         config_data = json.load(f)
-    return config_data["mcp_servers"][0]  # Return first server config
+    return config_data["mcpServers"][0]  # Return first server config
 
 
 @pytest.mark.asyncio
