@@ -87,78 +87,6 @@ poetry run python src/server.py
 
 The server will start in stdio mode, ready to accept MCP protocol messages.
 
-## Testing
-
-### Test Scripts
-
-The project includes three test scripts for different aspects of the system:
-
-1. `src/test_mcp_client.py` - Tests the MCP client functionality
-   - Verifies server startup
-   - Tests tool listing
-   - Tests schema introspection
-   - Tests entity creation
-   ```bash
-   task test  # Run just the client test
-   ```
-
-2. `src/test_mcp_config.py` - Tests the MCP configuration
-   - Validates configuration file loading
-   - Tests server connection using the official MCP SDK
-   - Verifies all required tools are available
-   - Can be run standalone or as part of the test suite
-   ```bash
-   task test-config  # Run just the config test
-   ```
-
-3. `src/test_neo4j_connection.py` - Tests the Neo4j database connection
-   - Verifies database connectivity
-   - Tests basic query functionality
-   - Checks environment configuration
-   ```bash
-   poetry run python src/test_neo4j_connection.py  # Run directly
-   ```
-
-### Running Tests
-
-You can run the tests in several ways:
-
-1. Run all tests together:
-   ```bash
-   task test-all  # Runs pytest and all test scripts
-   ```
-
-2. Run individual test scripts:
-   ```bash
-   task test        # Run MCP client test
-   task test-config # Run MCP config test
-   poetry run python src/test_neo4j_connection.py  # Run Neo4j connection test
-   ```
-
-3. Run tests with pytest directly:
-   ```bash
-   poetry run pytest  # Run all pytest-compatible tests
-   ```
-
-### Using Task
-
-Run the test client:
-```bash
-task test
-```
-
-### Running directly
-
-Run the test client:
-```bash
-poetry run python src/test_mcp_client.py
-```
-
-This will:
-1. Start the MCP server
-2. List available tools
-3. Test creating an entity in the knowledge graph
-
 ## Available Tools
 
 ### 1. Create Entities
@@ -192,14 +120,110 @@ Example input:
 }
 ```
 
-## Planned Features
+### 3. Search Entities
+Searches for entities in the knowledge graph with fuzzy matching support.
 
-For a comprehensive list of planned features and enhancements, please see [wanted-features.md](wanted-features.md). This document outlines additional tools and capabilities that are being considered for future development, including:
-- Enhanced query and search capabilities
-- Advanced entity management tools
-- Improved schema validation and management
-- Graph analytics and visualization features
-- Integration and batch operation capabilities
+Example input:
+```json
+{
+    "search_term": "John",
+    "entity_type": "Person",
+    "properties": ["name", "occupation"],
+    "include_relationships": true,
+    "fuzzy_match": true
+}
+```
+
+### 4. Update Entities
+Updates existing entities in the knowledge graph.
+
+Example input:
+```json
+{
+    "updates": [{
+        "id": "John Doe",
+        "properties": {
+            "occupation": "Senior Developer"
+        },
+        "remove_properties": ["temp_field"],
+        "add_labels": ["Verified"],
+        "remove_labels": ["Pending"]
+    }]
+}
+```
+
+### 5. Delete Entities
+Deletes entities from the knowledge graph with optional cascade deletion of relationships.
+
+Example input:
+```json
+{
+    "entity_ids": ["John Doe", "Jane Smith"],
+    "cascade": false,
+    "dry_run": true
+}
+```
+
+### 6. Introspect Schema
+Retrieves information about the Neo4j database schema, including node labels and relationship types.
+
+Example input:
+```json
+{}
+```
+
+## Testing
+
+### Test Scripts
+
+The project includes several test scripts for different aspects of the system:
+
+1. `src/test_mcp_client.py` - Tests the MCP client functionality
+   - Verifies server startup
+   - Tests tool listing
+   - Tests schema introspection
+   - Tests entity creation
+   ```bash
+   task test-client  # Run just the client test
+   ```
+
+2. `src/test_mcp_config.py` - Tests the MCP configuration
+   - Validates configuration file loading
+   - Tests server connection using the official MCP SDK
+   - Verifies all required tools are available
+   ```bash
+   task test-config  # Run just the config test
+   ```
+
+3. `src/test_neo4j_connection.py` - Tests the Neo4j database connection
+   - Verifies database connectivity
+   - Tests basic query functionality
+   - Checks environment configuration
+   ```bash
+   task test-db  # Run just the database test
+   ```
+
+### Running Tests
+
+You can run the tests in several ways:
+
+1. Run all tests together:
+   ```bash
+   task test  # Runs all tests including pytest and integration tests
+   ```
+
+2. Run individual test types:
+   ```bash
+   task test-client    # Run MCP client test
+   task test-config    # Run MCP config test
+   task test-db        # Run Neo4j connection test
+   task test-integration  # Run integration tests
+   ```
+
+3. Run tests with pytest directly:
+   ```bash
+   poetry run pytest  # Run all pytest-compatible tests
+   ```
 
 ## Development
 
@@ -215,7 +239,7 @@ task format
 task lint
 
 # Run tests
-task test-all
+task test
 
 # Start development environment
 task dev
@@ -253,6 +277,9 @@ The server includes comprehensive error handling for:
 - Invalid queries
 - Missing nodes
 - Invalid request formats
+- Schema validation errors
+- Relationship creation failures
+- Entity update conflicts
 
 All errors are returned with appropriate error messages in the MCP protocol format.
 
@@ -274,9 +301,12 @@ You can modify these settings in the `docker-compose.yml` file.
 - `task dev` - Start development environment (Docker + Server + Test)
 - `task docker` - Start Neo4j database
 - `task server` - Run the MCP server
-- `task test` - Run the test client
+- `task test` - Run all tests
+- `task test-client` - Run MCP client tests
+- `task test-config` - Run MCP config tests
+- `task test-db` - Run database tests
+- `task test-integration` - Run integration tests
 - `task down` - Stop all Docker services
 - `task format` - Format code using black and isort
 - `task lint` - Run flake8 linter
-- `task test-all` - Run all tests
 - `task help` - Show detailed help for all tasks 
