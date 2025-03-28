@@ -28,15 +28,15 @@ async def main():
         )
 
         # Test each server
-        for server in config_data["mcpServers"]:
-            print(f"\nTesting server: {server['name']}")
+        for server_name, server_config in config_data['mcpServers'].items():
+            print(f"\nTesting server: {server_name}")
             try:
-                await test_server_connection(server)
-                print(f"✅ Server {server['name']} test passed")
+                await test_server_connection(server_config)
+                print(f"✅ Server {server_name} test passed")
             except AssertionError as e:
-                print(f"❌ Server {server['name']} test failed: {str(e)}")
+                print(f"❌ Server {server_name} test failed: {str(e)}")
             except Exception as e:
-                print(f"❌ Server {server['name']} test error: {str(e)}")
+                print(f"❌ Server {server_name} test error: {str(e)}")
                 print(f"Error type: {type(e)}")
                 import traceback
                 traceback.print_exc()
@@ -54,7 +54,7 @@ def server_config():
     config_path = Path(__file__).parent.parent / "example_mcp_config.json"
     with open(config_path, "r") as f:
         config_data = json.load(f)
-    return config_data["mcpServers"][0]  # Return first server config
+    return next(iter(config_data["mcpServers"].values()))  # Return first server config
 
 
 @pytest.mark.asyncio
@@ -64,7 +64,7 @@ async def test_server_connection(server_config: Dict) -> None:
     
     # Create server parameters using the official SDK
     server_params = StdioServerParameters(
-        command=server_config["command"][0],  # First command is the executable
+        command=server_config["command"],  # Command is now a string
         args=server_config.get("args", []),  # Get args from config or empty list
         env=None,  # Use default environment
     )
