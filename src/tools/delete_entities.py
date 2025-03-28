@@ -199,22 +199,56 @@ async def register(server: FastMCP, driver: AsyncDriver) -> None:
         dry_run: bool = False,
         context: Dict = None
     ) -> Dict:
-        """Delete entities from the knowledge graph.
+        """Delete entities from the knowledge graph with relationship handling and impact analysis.
+        
+        Provides safe deletion of entities with options for:
+        - Cascading deletion of relationships
+        - Dry run impact analysis
+        - Prevention of orphaned relationships
+        
+        The operation can be previewed using dry_run to see what would be affected
+        without making any changes. When cascade is False, the operation will fail
+        if there are any relationships that would become orphaned.
         
         Args:
-            entity_ids: List of entity IDs to delete
-            cascade: If True, delete all relationships connected to these entities
-            dry_run: If True, only return what would be deleted without making changes
-            context: Optional context with Neo4j driver instance
+            entity_ids: List[String] - IDs of entities to delete
+            cascade: Boolean - If True, also delete all relationships connected to
+                    these entities. If False, fail if any relationships exist
+                    (default: False)
+            dry_run: Boolean - If True, only analyze and return what would be
+                    deleted without making changes (default: False)
+            context: Optional[Dict] - Additional context for the deletion operation
             
         Returns:
             Dict containing:
-            - success: Whether the operation was successful
-            - deleted_entities: List of entities that were deleted
-            - deleted_relationships: List of relationships that were deleted
-            - errors: Optional list of error messages if deletion was prevented
-            - impacted_entities: Optional list of entities that would be affected (dry_run only)
-            - impacted_relationships: Optional list of relationships that would be affected (dry_run only)
+                - success: Boolean - Whether the operation was successful
+                - deleted_entities: List[Dict] - Entities that were deleted, each with:
+                    - id: String - Entity's identifier
+                    - type: List[String] - Entity's labels
+                    - properties: Dict - Entity's properties
+                - deleted_relationships: List[Dict] - Relationships that were deleted
+                  (when cascade=True), each with:
+                    - type: String - Relationship type
+                    - from: String - Source entity ID
+                    - to: String - Target entity ID
+                    - properties: Dict - Relationship properties
+                - errors: Optional[List[String]] - Error messages if operation failed
+                - impacted_entities: Optional[List[Dict]] - When dry_run=True, entities
+                  that would be deleted
+                - impacted_relationships: Optional[List[Dict]] - When dry_run=True,
+                  relationships that would be deleted
+                
+        Raises:
+            ValueError: If entities don't exist or would create orphaned relationships
+            Neo4jError: For database-level errors
+            
+        Notes:
+            - All specified entities must exist
+            - Without cascade=True, all entities must have no relationships
+            - With cascade=True, all connected relationships will be deleted
+            - dry_run=True allows safely checking the impact before deletion
+            - The operation is atomic - either all specified entities are deleted
+              or none are
         """
         requests = [DeleteEntityRequest(id=id, cascade=cascade) for id in entity_ids]
         result = await delete_entities_impl(driver, requests, dry_run)

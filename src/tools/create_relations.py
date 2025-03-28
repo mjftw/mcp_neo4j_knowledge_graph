@@ -69,15 +69,35 @@ async def create_relations_impl(driver: AsyncDriver, relations: List[CreateRelat
 async def register(server: FastMCP, driver: AsyncDriver) -> None:
     """Register the create_relations tool with the MCP server."""
     
-    @server.tool("mcp_neo4j_knowledge_graph_create_relations")
+    @server.tool("create_relations")
     async def create_relations(relations: List[Dict]) -> Dict:
-        """Create multiple new relations between entities
+        """Create multiple new relationships between existing entities in the knowledge graph.
+        
+        Creates directed relationships between entities. Both source and target entities
+        must exist in the database before creating the relationship. The relationship type
+        is used as-is (not parameterized) and will be the label of the relationship in Neo4j.
         
         Args:
-            relations: List of relation dictionaries with from, to, and type fields
+            relations: List of relation dictionaries, each containing:
+                - type: String - The type/label of the relationship (e.g., KNOWS, WORKS_FOR)
+                - from: String - ID of the source entity where relationship starts
+                - to: String - ID of the target entity where relationship ends
             
         Returns:
-            Dict containing the created relations
+            Dict containing:
+                result: List of created relationships, each with:
+                    - type: String - The relationship type/label
+                    - from: String - Source entity ID
+                    - to: String - Target entity ID
+                    
+        Raises:
+            ValueError: If required fields are missing
+            Neo4jError: If referenced entities don't exist or other database errors
+            
+        Note:
+            - Failed relationship creations (e.g., missing entities) are skipped
+            - Relationship types are case sensitive
+            - Duplicate relationships between the same entities are allowed
         """
         if "driver" not in server.state:
             raise ValueError("Neo4j driver not found in server state")

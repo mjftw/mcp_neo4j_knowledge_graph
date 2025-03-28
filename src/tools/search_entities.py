@@ -137,7 +137,44 @@ async def register(server: FastMCP, driver: AsyncDriver) -> None:
         include_relationships: bool = False,
         fuzzy_match: bool = True
     ) -> Dict[str, Any]:
-        """Search for entities in the knowledge graph with fuzzy matching support"""
+        """Search for entities in the knowledge graph with powerful text matching and filtering.
+        
+        Performs a flexible search across entities with options for:
+        - Fuzzy text matching (case-insensitive partial matches)
+        - Filtering by entity type
+        - Searching specific properties
+        - Including related entities and relationships
+        
+        Args:
+            search_term: String - The text to search for in entity properties
+            entity_type: Optional[String] - Filter results to entities of this type
+            properties: Optional[List[String]] - List of property names to search in.
+                       If not provided, searches all string properties.
+            include_relationships: Boolean - Whether to include connected entities and
+                                 relationships in the results (default: False)
+            fuzzy_match: Boolean - Whether to use case-insensitive partial matching
+                        (default: True). If False, requires exact matches.
+            
+        Returns:
+            Dict containing:
+                results: List of matching entities, each with:
+                    - id: String - Entity's unique identifier
+                    - type: List[String] - Entity's type labels
+                    - properties: Dict - All properties of the entity
+                    - relationships: Optional[List[Dict]] - If include_relationships is True,
+                      list of related entities with:
+                        - type: String - Relationship type
+                        - direction: String - 'incoming' or 'outgoing'
+                        - node: Dict - Connected entity's data (id, type, properties)
+                    
+        Notes:
+            - When fuzzy_match is True, the search term is matched against property values
+              using case-insensitive contains matching
+            - When properties are specified, matches if ANY of the properties contain
+              the search term
+            - When no properties are specified, searches across ALL string properties
+            - Entity type filtering is exact match (not fuzzy)
+        """
         
         search_request = SearchEntityRequest(
             search_term=search_term,

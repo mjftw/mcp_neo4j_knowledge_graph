@@ -110,7 +110,12 @@ The server will start in stdio mode, ready to accept MCP protocol messages.
 ## Available Tools
 
 ### 1. Create Entities
-Creates new entities in the knowledge graph.
+Creates new entities in the knowledge graph. Each entity must have a type and properties. The ID will be automatically set from the name property if not explicitly provided.
+
+Parameters:
+- `entities`: List of entity objects, each containing:
+  - `type`: String - The type of entity (e.g., Person, Organization)
+  - `properties`: Object - Key-value pairs of entity properties (must include either 'id' or 'name')
 
 Example input:
 ```json
@@ -119,29 +124,42 @@ Example input:
         "type": "Person",
         "properties": {
             "name": "John Doe",
-            "occupation": "Developer"
+            "occupation": "Developer",
+            "age": 30
         }
-    }],
-    "context": {}
+    }]
 }
 ```
 
 ### 2. Create Relations
-Creates relationships between existing entities.
+Creates relationships between existing entities in the knowledge graph. All referenced entities must exist before creating relations.
+
+Parameters:
+- `relations`: List of relation objects, each containing:
+  - `type`: String - The type of relation (e.g., KNOWS, WORKS_FOR)
+  - `from`: String - ID of the source entity
+  - `to`: String - ID of the target entity
 
 Example input:
 ```json
 {
     "relations": [{
         "type": "KNOWS",
-        "from": "John Doe",
-        "to": "Jane Smith"
+        "from": "john_doe",
+        "to": "jane_smith"
     }]
 }
 ```
 
 ### 3. Search Entities
-Searches for entities in the knowledge graph with fuzzy matching support.
+Searches for entities in the knowledge graph with powerful fuzzy matching support and filtering capabilities.
+
+Parameters:
+- `search_term`: String (required) - The text to search for
+- `entity_type`: String (optional) - Filter results by entity type
+- `properties`: List[String] (optional) - List of property names to search in
+- `include_relationships`: Boolean (optional, default: false) - Whether to include related entities
+- `fuzzy_match`: Boolean (optional, default: true) - Enable fuzzy text matching
 
 Example input:
 ```json
@@ -155,17 +173,26 @@ Example input:
 ```
 
 ### 4. Update Entities
-Updates existing entities in the knowledge graph.
+Updates existing entities in the knowledge graph. Supports adding/removing properties and labels.
+
+Parameters:
+- `updates`: List of update objects, each containing:
+  - `id`: String (required) - ID of the entity to update
+  - `properties`: Object (optional) - Properties to update or add
+  - `remove_properties`: List[String] (optional) - Property names to remove
+  - `add_labels`: List[String] (optional) - Labels to add to the entity
+  - `remove_labels`: List[String] (optional) - Labels to remove from the entity
 
 Example input:
 ```json
 {
     "updates": [{
-        "id": "John Doe",
+        "id": "john_doe",
         "properties": {
-            "occupation": "Senior Developer"
+            "occupation": "Senior Developer",
+            "salary": 100000
         },
-        "remove_properties": ["temp_field"],
+        "remove_properties": ["temporary_note"],
         "add_labels": ["Verified"],
         "remove_labels": ["Pending"]
     }]
@@ -175,17 +202,39 @@ Example input:
 ### 5. Delete Entities
 Deletes entities from the knowledge graph with optional cascade deletion of relationships.
 
+Parameters:
+- `entity_ids`: List[String] (required) - List of entity IDs to delete
+- `cascade`: Boolean (optional, default: false) - Whether to delete connected relationships
+- `dry_run`: Boolean (optional, default: false) - Preview deletion impact without making changes
+
 Example input:
 ```json
 {
-    "entity_ids": ["John Doe", "Jane Smith"],
-    "cascade": false,
+    "entity_ids": ["john_doe", "jane_smith"],
+    "cascade": true,
     "dry_run": true
 }
 ```
 
+Returns:
+- `success`: Boolean - Whether the operation was successful
+- `deleted_entities`: List of deleted entities
+- `deleted_relationships`: List of deleted relationships
+- `errors`: List of error messages (if any)
+- `impacted_entities`: List of entities that would be affected (dry_run only)
+- `impacted_relationships`: List of relationships that would be affected (dry_run only)
+
 ### 6. Introspect Schema
-Retrieves information about the Neo4j database schema, including node labels and relationship types.
+Retrieves comprehensive information about the Neo4j database schema, including node labels, relationship types, and their properties.
+
+Parameters: None required
+
+Returns:
+- `schema`: Object containing:
+  - `node_labels`: List of all node labels in the database
+  - `relationship_types`: List of all relationship types
+  - `node_properties`: Map of label to list of property names
+  - `relationship_properties`: Map of relationship type to list of property names
 
 Example input:
 ```json
