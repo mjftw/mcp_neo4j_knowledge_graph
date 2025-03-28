@@ -37,15 +37,35 @@ For Ubuntu users running Claude Desktop, you can configure the MCP server by add
 ~/.config/Claude/claude_desktop_config.json
 ```
 
+Before configuring, you need to build the standalone executable:
+```bash
+task build
+```
+
+This will create a binary at `dist/neo4j_mcp_server`. Make sure to update the path in your configuration to point to this built executable.
+
 An example configuration is provided in `example_mcp_config.json`. You can copy and modify this file:
 
 ```bash
 cp example_mcp_config.json ~/.config/Claude/claude_desktop_config.json
 ```
 
+Then edit the `command` path in the configuration file to point to your built executable:
+```json
+{
+  "mcpServers": [
+    {
+      "name": "neo4j-knowledge-graph",
+      "command": ["/path/to/your/dist/neo4j_mcp_server"],
+      ...
+    }
+  ]
+}
+```
+
 The configuration includes:
 - Server name and description
-- Command to start the server
+- Command to start the server (path to the built executable)
 - Available tools and their parameters
 - Required fields and data types
 
