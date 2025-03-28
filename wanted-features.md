@@ -4,13 +4,7 @@ This document outlines additional features and tools that would enhance the func
 
 ## Query and Search Tools
 
-1. **Entity Search Tool**
-   - Search for entities based on properties, labels, or relationships
-   - Support for fuzzy matching and partial matches
-   - Ability to filter results by entity type
-   - Return detailed entity information including relationships
-
-2. **Entity Details Tool**
+1. **Entity Details Tool**
    - Retrieve comprehensive information about specific entities
    - Include all properties, labels, and relationships
    - Option to specify depth of relationship traversal
@@ -18,17 +12,6 @@ This document outlines additional features and tools that would enhance the func
 
 ## Management Tools
 
-3. **Entity Deletion Tool**
-   - Safely remove entities from the graph
-   - Option for cascade deletion of relationships
-   - Validation to prevent orphaned relationships
-   - Dry-run option to preview deletion impact
-
-4. **Entity Update Tool**
-   - Modify existing entity properties
-   - Add/remove labels
-   - Batch update capabilities
-   - Validation of property types and constraints
 
 ## Validation and Schema Tools
 
