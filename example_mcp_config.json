@@ -1,7 +1,10 @@
 {
-  "mcpServers": {
-    "neo4j-knowledge-graph": {
-      "command": "/home/merlin/projects/worthafen/dist/neo4j_mcp_server",
+  "mcp_servers": [
+    {
+      "name": "neo4j-knowledge-graph",
+      "command": [
+        "/home/merlin/projects/worthafen/dist/neo4j_mcp_server"
+      ],
       "args": [],
       "description": "Local Neo4j-based knowledge graph server",
       "stdio": true,
@@ -125,9 +128,85 @@
               "properties": {},
               "required": []
             }
+          },
+          {
+            "name": "update_entities",
+            "description": "Update existing entities in the knowledge graph",
+            "parameters": {
+              "type": "object",
+              "properties": {
+                "updates": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "description": "ID of the entity to update"
+                      },
+                      "properties": {
+                        "type": "object",
+                        "description": "Properties to update or add"
+                      },
+                      "remove_properties": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        },
+                        "description": "List of property names to remove"
+                      },
+                      "add_labels": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        },
+                        "description": "List of labels to add to the entity"
+                      },
+                      "remove_labels": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        },
+                        "description": "List of labels to remove from the entity"
+                      }
+                    },
+                    "required": [
+                      "id"
+                    ]
+                  }
+                }
+              },
+              "required": [
+                "updates"
+              ]
+            }
+          },
+          {
+            "name": "delete_entities",
+            "description": "Delete entities from the knowledge graph",
+            "parameters": {
+              "type": "object",
+              "properties": {
+                "entity_ids": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "description": "List of entity IDs to delete"
+                },
+                "cascade": {
+                  "type": "boolean",
+                  "description": "Whether to cascade delete relationships",
+                  "default": false
+                }
+              },
+              "required": [
+                "entity_ids"
+              ]
+            }
           }
         ]
       }
     }
-  }
+  ]
 }

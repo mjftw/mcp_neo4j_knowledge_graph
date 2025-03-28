@@ -35,9 +35,17 @@ async def main():
                 print(f"✅ Server {server['name']} test passed")
             except AssertionError as e:
                 print(f"❌ Server {server['name']} test failed: {str(e)}")
+            except Exception as e:
+                print(f"❌ Server {server['name']} test error: {str(e)}")
+                print(f"Error type: {type(e)}")
+                import traceback
+                traceback.print_exc()
 
     except Exception as e:
         print(f"Error during testing: {str(e)}")
+        print(f"Error type: {type(e)}")
+        import traceback
+        traceback.print_exc()
 
 
 @pytest.fixture
@@ -52,36 +60,54 @@ def server_config():
 @pytest.mark.asyncio
 async def test_server_connection(server_config: Dict) -> None:
     """Test connection to an MCP server using the official SDK."""
+    print(f"Testing with config: {server_config}")
+    
     # Create server parameters using the official SDK
     server_params = StdioServerParameters(
         command=server_config["command"][0],  # First command is the executable
-        args=server_config["command"][1:],  # Rest are arguments
+        args=server_config.get("args", []),  # Get args from config or empty list
         env=None,  # Use default environment
     )
+    print(f"Created server parameters: {server_params}")
 
-    # Connect to the stdio server using the official client
-    async with stdio_client(server_params) as (read_stream, write_stream):
-        async with ClientSession(read_stream, write_stream) as client:
-            # Initialize the connection
-            await client.initialize()
+    try:
+        # Connect to the stdio server using the official client
+        print("Attempting to connect to server...")
+        async with stdio_client(server_params) as (read_stream, write_stream):
+            print("Connected to server, creating client session...")
+            async with ClientSession(read_stream, write_stream) as client:
+                print("Initializing client connection...")
+                # Initialize the connection
+                await client.initialize()
+                print("Client initialized successfully")
 
-            # List available tools
-            tools_result = await client.list_tools()
-            tools = tools_result.tools if hasattr(tools_result, "tools") else []
-            assert len(tools) > 0, "No tools found"
+                # List available tools
+                print("Requesting tool list...")
+                tools_result = await client.list_tools()
+                tools = tools_result.tools if hasattr(tools_result, "tools") else []
+                assert len(tools) > 0, "No tools found"
+                print(f"Found {len(tools)} tools")
 
-            # Verify expected tools are present
-            tool_names = [tool.name for tool in tools]
-            expected_tools = [
-                "create_entities",
-                "introspect_schema",
-                "create_relations",
-                "search_entities",
-                "update_entities",
-                "delete_entities"
-            ]
-            for tool in expected_tools:
-                assert tool in tool_names, f"Expected tool {tool} not found"
+                # Verify expected tools are present
+                tool_names = [tool.name for tool in tools]
+                print(f"Available tools: {tool_names}")
+                expected_tools = [
+                    "create_entities",
+                    "introspect_schema",
+                    "create_relations",
+                    "search_entities",
+                    "update_entities",
+                    "delete_entities"
+                ]
+                for tool in expected_tools:
+                    assert tool in tool_names, f"Expected tool {tool} not found"
+                print("All expected tools found")
+    except Exception as e:
+        print(f"Error during server connection test: {str(e)}")
+        print(f"Error type: {type(e)}")
+        import traceback
+        traceback.print_exc()
+        raise
 
 
 if __name__ == "__main__":

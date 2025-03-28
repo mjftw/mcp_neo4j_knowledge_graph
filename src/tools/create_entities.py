@@ -77,7 +77,7 @@ async def create_entities_impl(driver: AsyncDriver, entities: List[CreateEntityR
 async def register(server: FastMCP, driver: AsyncDriver) -> None:
     """Register the create_entities tool with the MCP server."""
     
-    @server.tool("mcp_neo4j_knowledge_graph_create_entities")
+    @server.tool("create_entities")
     async def create_entities(entities: List[Dict]) -> Dict:
         """Create multiple new entities in the knowledge graph
         
