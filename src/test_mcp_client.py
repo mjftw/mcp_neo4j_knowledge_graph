@@ -1,5 +1,6 @@
 import asyncio
 import subprocess
+import sys
 from dataclasses import dataclass
 from typing import Dict, Optional
 
@@ -20,6 +21,7 @@ class ServerProcess:
 async def main():
     """Test client that connects to the stdio MCP server"""
     print("Starting MCP server process...")
+    errors = []
 
     # Start the server process
     process = subprocess.Popen(
@@ -55,13 +57,14 @@ async def main():
             # Test the introspect_schema tool
             print("\nTesting introspect_schema tool...")
             try:
-                result = await client.call_tool("introspect_schema", {})
+                result = await client.call_tool("introspect_schema", {"random_string": "test"})
                 # Access the content from the result
                 schema_data = result.content[0].text
                 print(f"Schema information:")
                 print(schema_data)
             except Exception as e:
                 print(f"Error: {e}")
+                errors.append(f"introspect_schema failed: {str(e)}")
 
             # Test the create_entities tool
             print("\nTesting create_entities tool...")
@@ -82,8 +85,11 @@ async def main():
                     },
                 )
                 print(f"Result: {result}")
+                if hasattr(result, 'isError') and result.isError:
+                    errors.append(f"create_entities failed: {result.content[0].text}")
             except Exception as e:
                 print(f"Error: {e}")
+                errors.append(f"create_entities failed: {str(e)}")
 
             # Test the search_entities tool
             print("\nTesting search_entities tool...")
@@ -104,6 +110,7 @@ async def main():
                     print("No results found")
             except Exception as e:
                 print(f"Error searching entities: {e}")
+                errors.append(f"search_entities failed: {str(e)}")
 
             # Test the update_entities tool
             print("\nTesting update_entities tool...")
@@ -128,8 +135,11 @@ async def main():
                     print(update_result.content[0].text)
                 else:
                     print("No updates performed")
+                if hasattr(update_result, 'isError') and update_result.isError:
+                    errors.append(f"update_entities failed: {update_result.content[0].text}")
             except Exception as e:
                 print(f"Error updating entities: {e}")
+                errors.append(f"update_entities failed: {str(e)}")
 
             # Test the delete_entities tool
             print("\nTesting delete_entities tool...")
@@ -146,15 +156,25 @@ async def main():
                     print(delete_result.content[0].text)
                 else:
                     print("No deletions performed")
+                if hasattr(delete_result, 'isError') and delete_result.isError:
+                    errors.append(f"delete_entities failed: {delete_result.content[0].text}")
             except Exception as e:
                 print(f"Error deleting entities: {e}")
-
-            print("\nTest completed successfully!")
+                errors.append(f"delete_entities failed: {str(e)}")
 
             # Clean up
             process.terminate()
             await asyncio.sleep(0.1)  # Give process time to terminate
             process.kill()  # Force kill if still running
+
+            # Report test results
+            if errors:
+                print("\nTest failed with the following errors:")
+                for error in errors:
+                    print(f"- {error}")
+                sys.exit(1)
+            else:
+                print("\nTest completed successfully!")
 
 
 if __name__ == "__main__":
