@@ -14,6 +14,7 @@ from tools.delete_entities import register as register_delete_entities
 from tools.introspect_schema import register as register_introspect_schema
 from tools.search_entities import register as register_search_entities
 from tools.update_entities import register as register_update_entities
+from neo4j_driver import create_neo4j_driver
 
 # Load environment variables
 load_dotenv()
@@ -22,10 +23,7 @@ load_dotenv()
 @asynccontextmanager
 async def lifespan(mcp: FastMCP):
     # Initialize Neo4j driver with docker-compose configuration
-    driver = AsyncGraphDatabase.driver(
-        "neo4j://localhost:7687",  # Bolt port from docker-compose
-        auth=("neo4j", "password"),  # Auth from NEO4J_AUTH in docker-compose
-    )
+    driver = await create_neo4j_driver()
 
     try:
         # Verify connection
@@ -41,10 +39,8 @@ async def lifespan(mcp: FastMCP):
 def create_server():
     mcp = FastMCP(lifespan=lifespan)
 
-    driver = AsyncGraphDatabase.driver(
-        "neo4j://localhost:7687",  # Bolt port from docker-compose
-        auth=("neo4j", "password"),  # Auth from NEO4J_AUTH in docker-compose
-    )
+    # Create driver for tool registration
+    driver = asyncio.run(create_neo4j_driver())
 
     # Register all tools
     asyncio.run(register_create_entities(mcp, driver))
