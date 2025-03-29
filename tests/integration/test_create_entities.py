@@ -2,7 +2,7 @@ import uuid
 from typing import AsyncGenerator
 
 import pytest
-from neo4j import AsyncDriver, AsyncGraphDatabase
+from neo4j import AsyncDriver
 
 from src.tools.create_entities import (
     create_entities_impl,
@@ -10,21 +10,6 @@ from src.tools.create_entities import (
     Entity,
     CreateEntitiesResult
 )
-
-
-@pytest.fixture
-async def driver() -> AsyncGenerator[AsyncDriver, None]:
-    # Using test database configuration
-    driver = AsyncGraphDatabase.driver(
-        "neo4j://localhost:7687",
-        auth=("neo4j", "password")
-    )
-    
-    try:
-        await driver.verify_connectivity()
-        yield driver
-    finally:
-        await driver.close()
 
 
 def create_test_entity(name_prefix: str = "test") -> CreateEntityRequest:

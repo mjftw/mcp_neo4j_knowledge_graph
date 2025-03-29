@@ -2,25 +2,11 @@ import uuid
 from typing import AsyncGenerator, Dict, List
 
 import pytest
-from neo4j import AsyncDriver, AsyncGraphDatabase
+from neo4j import AsyncDriver
 
 from src.tools.create_entities import create_entities_impl, CreateEntityRequest
 from src.tools.create_relations import create_relations_impl, CreateRelationRequest
 from src.tools.search_entities import search_entities_impl, SearchEntityRequest
-
-
-@pytest.fixture
-async def driver() -> AsyncGenerator[AsyncDriver, None]:
-    driver = AsyncGraphDatabase.driver(
-        "neo4j://localhost:7687",
-        auth=("neo4j", "password")
-    )
-    
-    try:
-        await driver.verify_connectivity()
-        yield driver
-    finally:
-        await driver.close()
 
 
 async def create_test_dataset(driver: AsyncDriver, test_id: str) -> Dict[str, List[Dict]]:

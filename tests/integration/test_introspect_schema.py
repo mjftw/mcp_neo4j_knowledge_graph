@@ -2,7 +2,7 @@ import uuid
 from typing import AsyncGenerator, Dict, List
 
 import pytest
-from neo4j import AsyncDriver, AsyncGraphDatabase
+from neo4j import AsyncDriver
 
 from src.tools.create_entities import create_entities_impl, CreateEntityRequest
 from src.tools.create_relations import create_relations_impl, CreateRelationRequest
@@ -12,19 +12,18 @@ from src.tools.introspect_schema import (
 )
 
 
-@pytest.fixture
-async def driver() -> AsyncGenerator[AsyncDriver, None]:
-    # Using test database configuration
-    driver = AsyncGraphDatabase.driver(
-        "neo4j://localhost:7687",
-        auth=("neo4j", "password")
-    )
+@pytest.mark.asyncio
+async def test_introspect_empty_database(driver: AsyncDriver):
+    """Test introspecting schema of an empty database"""
+    # Act
+    result = await introspect_schema_impl(driver)
     
-    try:
-        await driver.verify_connectivity()
-        yield driver
-    finally:
-        await driver.close()
+    # Assert
+    assert isinstance(result, SchemaIntrospectionResult)
+    assert isinstance(result.node_labels, list)
+    assert isinstance(result.relationship_types, list)
+    assert isinstance(result.node_properties, dict)
+    assert isinstance(result.relationship_properties, dict)
 
 
 async def create_test_data(driver: AsyncDriver) -> Dict[str, List[Dict]]:
