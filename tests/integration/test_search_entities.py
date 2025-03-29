@@ -270,22 +270,21 @@ async def test_should_find_entity_by_exact_name(driver: AsyncDriver):
 
 @pytest.mark.asyncio
 async def test_should_find_entity_by_type_and_property(driver: AsyncDriver):
-    """When searching with type and property filters, should return only matching entity"""
+    """When searching by type and property value, should return matching entity"""
     # Arrange
     test_id = str(uuid.uuid4())
-    await create_test_dataset(driver, test_id)
-
+    dataset = await create_test_dataset(driver, test_id)
+    
     # Act
     results = await search_entities_impl(
         driver,
         SearchEntityRequest(
             search_term=test_id,
             entity_type="Company",
-            properties=["name"],
-            fuzzy_match=True
+            properties=["name"]
         )
     )
-
+    
     # Assert
     assert len(results.results) == 1
     assert "Company" in results.results[0].type

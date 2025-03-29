@@ -191,6 +191,9 @@ Example inputs:
     "search_term": "example.com",
     "fuzzy_match": true
 }
+
+// Return all entities (no filters)
+{}
 ```
 
 Returns:
@@ -227,6 +230,12 @@ Notes:
 - Entity type filtering is exact match (not fuzzy)
 - Property existence check is done with `IS NOT NULL`
 - Text search supports case-insensitive partial matching when fuzzy_match is true
+- Empty results are returned as an empty array, not an error
+- Performance considerations:
+  - Filtering by type is more efficient than text search
+  - Property existence checks are optimized
+  - Consider using specific properties instead of searching all properties
+  - Large result sets may be paginated in future versions
 
 ### 4. Update Entities
 Updates existing entities in the knowledge graph. Supports adding/removing properties and labels.
