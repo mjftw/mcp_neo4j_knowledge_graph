@@ -1,6 +1,6 @@
 services:
   neo4j:
-    image: neo4j:5.18.0
+    image: neo4j:5.26.0
     container_name: ai-info-neo4j
     restart: always
     ports:
