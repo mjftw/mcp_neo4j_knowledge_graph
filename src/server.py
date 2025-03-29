@@ -28,7 +28,17 @@ async def lifespan(mcp: FastMCP):
     try:
         # Verify connection
         await driver.verify_connectivity()
-        mcp.state = {"driver": driver}  # Initialize state dictionary
+        
+        # Register all tools
+        await register_create_entities(mcp, driver)
+        await register_create_relations(mcp, driver)
+        await register_delete_entities(mcp, driver)
+        await register_introspect_schema(mcp, driver)
+        await register_search_entities(mcp, driver)
+        await register_update_entities(mcp, driver)
+        
+        # Initialize state dictionary
+        mcp.state = {"driver": driver}
         print("Successfully connected to Neo4j")
         yield {"driver": driver}
     finally:
@@ -37,20 +47,7 @@ async def lifespan(mcp: FastMCP):
 
 
 def create_server():
-    mcp = FastMCP(lifespan=lifespan)
-
-    # Create driver for tool registration
-    driver = asyncio.run(create_neo4j_driver())
-
-    # Register all tools
-    asyncio.run(register_create_entities(mcp, driver))
-    asyncio.run(register_create_relations(mcp, driver))
-    asyncio.run(register_delete_entities(mcp, driver))
-    asyncio.run(register_introspect_schema(mcp, driver))
-    asyncio.run(register_search_entities(mcp, driver))
-    asyncio.run(register_update_entities(mcp, driver))
-
-    return mcp
+    return FastMCP(lifespan=lifespan)
 
 
 if __name__ == "__main__":
